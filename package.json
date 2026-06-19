@@ -1,0 +1,58 @@
+{
+  "name": "quartz-launcher",
+  "version": "0.1.0",
+  "description": "Quartz Launcher for Geometry Dash",
+  "main": "main.js",
+  "scripts": {
+    "start": "/usr/bin/electron .",
+    "start:win-dev": "electron .",
+    "build:win": "electron-builder --win portable --x64",
+    "pack:quartz": "node tools/pack-quartz.js",
+    "inspect:quartz": "node tools/inspect-quartz.js",
+    "convert:geode": "node tools/convert-geode-to-quartz.js",
+    "runtime:test": "node tools/quartz-runtime-test.js",
+    "smoke:test": "node tools/quartz-smoke-test.js",
+    "validate:quartz": "node tools/validate-quartz-package.js",
+    "validate:all": "node tools/validate-all-quartz-packages.js",
+    "site:open": "xdg-open https://quartz-launcher.pages.dev",
+    "site:preview": "python3 -m http.server 5173 --directory site",
+    "site:deploy": "wrangler pages deploy site --project-name=quartz-launcher --branch=main --commit-dirty=true",
+    "build:prerelease": "node tools/build-prerelease.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.0.1",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "wrangler": "^4.103.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "jszip": "^3.10.1"
+  },
+  "build": {
+    "appId": "com.quartzlauncher.app",
+    "productName": "Quartz Launcher",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "QuartzLauncher-Windows-${version}-${arch}.${ext}"
+    }
+  }
+}

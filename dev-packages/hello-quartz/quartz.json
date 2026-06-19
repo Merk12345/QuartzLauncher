@@ -1,0 +1,21 @@
+{
+  "format": "quartz.package",
+  "formatVersion": 1,
+  "id": "quartz.hello",
+  "name": "Hello Quartz",
+  "developer": "Quartz Team",
+  "version": "1.0.0",
+  "engine": "quartz-resource",
+  "category": "Utility",
+  "description": "A sample Quartz package used to test the Quartz package format.",
+  "entry": "payload/",
+  "tags": [
+    "Quartz Native",
+    "Sample",
+    "Resource"
+  ],
+  "game": "geometry-dash",
+  "gameVersion": "*",
+  "permissions": [],
+  "dependencies": []
+}

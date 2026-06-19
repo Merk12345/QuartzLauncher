@@ -1,0 +1,18 @@
+{
+  "name": "Quartz Index",
+  "version": "0.1.0",
+  "mods": [
+    {
+      "id": "itzrealmerk.integrated-spam-list",
+      "name": "Integrated Spam List",
+      "developer": "itzrealmerk",
+      "version": "1.0.1",
+      "description": "An in-game viewer for the Global Spam Challenge List.",
+      "packageFile": "IntegratedSpamList.quartz",
+      "icon": "quartzlogo.png",
+      "type": ".quartz Package",
+      "tags": ["GSCL", "Utility", "Quartz"],
+      "featured": true
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "format": "quartz.package",
+  "formatVersion": 1,
+  "id": "example.quartz-native-template",
+  "name": "Quartz Native Template",
+  "developer": "Your Name",
+  "version": "1.0.0",
+  "engine": "quartz-native",
+  "category": "Utility",
+  "description": "A starter Quartz-native mod template.",
+  "entry": "payload/main.js",
+  "tags": ["Quartz Native", "Template", "Example"],
+  "game": "geometry-dash",
+  "gameVersion": "*",
+  "permissions": [],
+  "dependencies": []
+}

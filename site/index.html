@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quartz Launcher</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <div class="brand">
+        <img src="assets/quartzlogo.png" alt="Quartz Logo" onerror="this.style.display='none'" />
+        <span>Quartz Launcher</span>
+      </div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#native">Quartz Native</a>
+        <a href="#download">Download</a>
+      </div>
+    </nav>
+
+    <section class="hero-content">
+      <p class="eyebrow">A new Geometry Dash mod launcher</p>
+      <h1>Quartz Launcher</h1>
+      <p class="subtitle">
+        A standalone mod launcher built around the new <strong>.quartz</strong> package format,
+        Quartz-native mods, runtime testing, and clean mod management.
+      </p>
+
+      <div class="buttons">
+        <a class="btn primary" href="#download">Download Coming Soon</a>
+        <a class="btn secondary" href="#features">See Features</a>
+      </div>
+
+      <div class="status-card">
+        <span class="dot"></span>
+        <p>Current status: private tester build in progress</p>
+      </div>
+    </section>
+  </header>
+
+  <main>
+    <section id="features" class="section">
+      <h2>Built for clean mod management</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>.quartz Packages</h3>
+          <p>Quartz uses its own package format with manifest validation and support for multiple mod engines.</p>
+        </div>
+        <div class="card">
+          <h3>Install, Enable, Disable</h3>
+          <p>Manage installed mods from one launcher with library, enabled, disabled, and runtime folders.</p>
+        </div>
+        <div class="card">
+          <h3>Geode Compatibility</h3>
+          <p>Existing .geode mods can be wrapped into .quartz compatibility packages while Quartz-native grows.</p>
+        </div>
+        <div class="card">
+          <h3>Runtime Testing</h3>
+          <p>Quartz can stage enabled mods and run runtime checks before public releases.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="native" class="section split">
+      <div>
+        <h2>Quartz-native is the future</h2>
+        <p>
+          Quartz is being built as more than a frontend. The goal is a real standalone platform
+          with Quartz-native mods, a runtime API, package validation, templates, and developer tools.
+        </p>
+      </div>
+      <div class="code-card">
+<pre><code>{
+  "format": "quartz.package",
+  "engine": "quartz-native",
+  "entry": "payload/main.js"
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="download" class="section download">
+      <h2>Pre-release Downloads</h2>
+      <p>
+        Quartz Launcher is currently in pre-alpha testing. These builds are early and meant for testing only.
+      </p>
+
+      <div class="download-grid">
+        <div class="download-box">
+          <span class="pill">Windows</span>
+          <h3>Windows x64</h3>
+          <p>Portable pre-release ZIP for Windows testers.</p>
+          <a class="download-btn" href="https://github.com/itzrealmerk/QuartzLauncher/releases/download/v0.1.0-prealpha/QuartzLauncher-windows-x64-0.1.0-prealpha.zip">
+            Download Windows Build
+          </a>
+        </div>
+
+        <div class="download-box">
+          <span class="pill">Linux</span>
+          <h3>Linux x64</h3>
+          <p>Portable pre-release ZIP for Linux testers.</p>
+          <a class="download-btn" href="https://github.com/itzrealmerk/QuartzLauncher/releases/download/v0.1.0-prealpha/QuartzLauncher-linux-x64-0.1.0-prealpha.zip">
+            Download Linux Build
+          </a>
+        </div>
+
+        <div class="download-box">
+          <span class="pill">macOS</span>
+          <h3>macOS x64</h3>
+          <p>Unsigned pre-release ZIP for macOS testers.</p>
+          <a class="download-btn" href="https://github.com/itzrealmerk/QuartzLauncher/releases/download/v0.1.0-prealpha/QuartzLauncher-macos-x64-0.1.0-prealpha.zip">
+            Download macOS Build
+          </a>
+        </div>
+      </div>
+
+      <p class="small-note">
+        Downloads are hosted through GitHub Releases. If a button does not work yet, the release file has not been uploaded.
+      </p>
+
+      <a class="release-link" href="https://github.com/itzrealmerk/QuartzLauncher/releases/tag/v0.1.0-prealpha">
+        View GitHub pre-release
+      </a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Quartz Launcher is an independent mod launcher project.</p>
+  </footer>
+</body>
+</html>

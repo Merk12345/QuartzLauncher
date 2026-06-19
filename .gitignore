@@ -1,0 +1,55 @@
+# dependencies
+node_modules/
+
+# env/secrets
+.env
+.env.*
+*.pem
+*.key
+
+# release/build outputs
+releases/builds/
+releases/*.zip
+dist/
+out/
+
+# backups/temp/generated junk
+backups/
+checkpoints/
+tmp/
+build-quartz/
+*.bak
+*.backup*
+*.broken*
+main.js.backup*
+preload.js.backup*
+package.json.backup*
+src/*.backup*
+src/*.broken*
+tools/*.backup*
+
+# local weird files
+node
+quartz-launcher@0.1.0
+
+# avoid committing third-party converted packages by default
+assets/packages/*.quartz
+assets/packages/*.quartz.*
+
+# keep only Quartz-owned sample/test packages
+!assets/packages/HelloQuartz.quartz
+!assets/packages/HelloQuartzNative.quartz
+!assets/packages/QuartzNativeTemplate.quartz
+!assets/packages/itzrealmerk.first-native-test.quartz
+
+# system/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

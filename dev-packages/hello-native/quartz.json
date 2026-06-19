@@ -1,0 +1,17 @@
+{
+  "format": "quartz.package",
+  "formatVersion": 1,
+  "id": "quartz.hello-native",
+  "name": "Hello Quartz Native",
+  "developer": "Quartz Team",
+  "version": "1.0.0",
+  "engine": "quartz-native",
+  "category": "Utility",
+  "description": "The first test Quartz-native mod. It proves the Quartz runtime can execute a native Quartz package entry.",
+  "entry": "payload/main.js",
+  "tags": ["Quartz Native", "Runtime Test", "Sample"],
+  "game": "geometry-dash",
+  "gameVersion": "*",
+  "permissions": [],
+  "dependencies": []
+}

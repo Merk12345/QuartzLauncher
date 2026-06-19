@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quartz Launcher</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../assets/quartzlogo.png" alt="Quartz Logo" class="logo" />
+        <div>
+          <h1>Quartz Launcher</h1>
+          <p>v0.1</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-page="home">Home</button>
+        <button class="nav-btn" data-page="mods">Mods</button>
+        <button class="nav-btn" data-page="index">Index</button>
+        <button class="nav-btn" data-page="settings">Settings</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="discordBtn" class="small-btn">Discord</button>
+        <button id="websiteBtn" class="small-btn">Website</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section id="home" class="page active-page">
+        <div class="hero">
+          <img src="../assets/quartzlogo.png" alt="Quartz Logo" class="hero-logo" />
+          <h2>Welcome to Quartz Launcher</h2>
+          <p>A custom Geometry Dash launcher with its own mod ecosystem.</p>
+
+          <div class="actions">
+            <button id="launchBtn" class="primary-btn">Launch Geometry Dash</button>
+            <button id="browseModsBtn" class="secondary-btn">Browse Mods</button>
+          </div>
+
+          <p id="statusText" class="status">Ready.</p>
+        </div>
+
+        <section class="cards">
+          <div class="card">
+            <h3>Quartz Mods</h3>
+            <p>Support for future <code>.quartz</code> packages.</p>
+          </div>
+          <div class="card">
+            <h3>Compatibility Support</h3>
+            <p>Quartz can import compatible legacy mod packages.</p>
+          </div>
+          <div class="card">
+            <h3>Launcher Goals</h3>
+            <p>Manage mods, launch the game, and keep everything in one place.</p>
+          </div>
+        </section>
+      </section>
+
+      <section id="mods" class="page">
+        <div class="page-header">
+          <h2>Installed Mods</h2>
+          <p>Manage Quartz packages and compatible mods.</p>
+        </div>
+
+        <div class="mod-grid">
+          <div class="mod-card featured">
+            <div class="mod-top">
+              <img src="../assets/quartzlogo.png" class="mod-icon" />
+              <div>
+                <h3>Integrated Spam List</h3>
+                <p class="mod-id">itzrealmerk.gscl-viewer</p>
+              </div>
+            </div>
+
+            <p class="mod-desc">
+              An in-game viewer for the Global Spam Challenge List.
+            </p>
+
+            <div class="tags">
+              <span>.quartz Package</span>
+              <span>GSCL</span>
+              <span>Utility</span>
+            </div>
+
+            <div class="mod-actions">
+              <button id="installISLBtn" class="primary-btn small">Install</button>
+              <button id="uninstallISLBtn" class="danger-btn small">Uninstall</button>
+              <button id="openModsFolderBtn" class="secondary-btn small">Open Folder</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="index" class="page">
+        <div class="page-header">
+          <h2>Quartz Index</h2>
+          <p>Browse approved Quartz packages.</p>
+        </div>
+
+        <div id="indexGrid" class="mod-grid"></div>
+      </section>
+
+      <section id="settings" class="page">
+        <div class="page-header">
+          <h2>Settings</h2>
+          <p>Configure game paths and launcher options.</p>
+        </div>
+
+        <div class="settings-box">
+          <label>Geometry Dash Launch Method</label>
+          <input value="steam -applaunch 322170" readonly />
+
+          <label>Detected Game Mods Target</label>
+          <input id="modsFolderInput" value="Checking..." readonly />
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

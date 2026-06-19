@@ -1,0 +1,20 @@
+{
+  "format": "quartz.package",
+  "formatVersion": 1,
+  "id": "itzrealmerk.first-native-test",
+  "name": "First Native Test",
+  "developer": "Your Name",
+  "version": "1.0.0",
+  "engine": "quartz-native",
+  "category": "Utility",
+  "description": "A Quartz-native mod called First Native Test.",
+  "entry": "payload/main.js",
+  "tags": [
+    "Quartz Native",
+    "Generated"
+  ],
+  "game": "geometry-dash",
+  "gameVersion": "*",
+  "permissions": [],
+  "dependencies": []
+}
