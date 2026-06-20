@@ -542,6 +542,13 @@ function addStyles() {
       margin-bottom: 10px;
     }
 
+    .quartz-dev-editor-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
     .quartz-dev-code-editor {
       width: 100%;
       min-height: 320px;
@@ -1807,6 +1814,8 @@ function bindButtons() {
       return result;
     }
 
+    editor.dataset.dirty = 'false';
+
     setDevCodeInfo(`Saved: ${result.relativePath}`);
     setStatus(`Saved ${result.relativePath}`);
     devLog(`Saved ${result.relativePath}`);
@@ -1816,6 +1825,20 @@ function bindButtons() {
     }
 
     return result;
+  }
+
+  async function saveThenRunDevCommand(command) {
+    const saveResult = await saveDevCodeFile();
+
+    if (!isOk(saveResult)) {
+      devTerminalLog(`Save failed before ${command}:`, getError(saveResult));
+      return saveResult;
+    }
+
+    devTerminalLog(`Saved ${saveResult.relativePath}. Running ${command}...`);
+    await runDevTerminalCommand(command);
+
+    return saveResult;
   }
 
   function devTerminalLog(message, details = null) {
@@ -1861,6 +1884,11 @@ function bindButtons() {
         'edit-main  Open payload/main.js in Code Editor',
         'edit-manifest Open quartz.json in Code Editor',
         'check      Check starter JS syntax',
+        'save       Save the open editor file',
+        'save-run   Save open file, then run',
+        'save-check Save open file, then check syntax',
+        'save-build Save open file, then build',
+        'save-install Save open file, then test install',
         'run        Run starter JS',
         'build      Build selected project',
         'validate   Validate selected build',
@@ -1870,6 +1898,42 @@ function bindButtons() {
         '',
         'Note: this is a controlled Dev Terminal, not a full system shell yet.'
       ].join('\n'));
+      return;
+    }
+
+    if (cmd === 'save') {
+      const result = await saveDevCodeFile();
+
+      devTerminalLog(
+        isOk(result) ? 'Saved open editor file:' : 'Save failed:',
+        isOk(result) ? result.relativePath : getError(result)
+      );
+
+      return;
+    }
+
+    if (cmd === 'save-run') {
+      await saveThenRunDevCommand('run');
+      return;
+    }
+
+    if (cmd === 'save-check') {
+      await saveThenRunDevCommand('check');
+      return;
+    }
+
+    if (cmd === 'save-build') {
+      await saveThenRunDevCommand('build');
+      return;
+    }
+
+    if (cmd === 'save-validate') {
+      await saveThenRunDevCommand('validate');
+      return;
+    }
+
+    if (cmd === 'save-install') {
+      await saveThenRunDevCommand('install');
       return;
     }
 
@@ -2062,10 +2126,44 @@ function bindButtons() {
     await saveDevCodeFile();
   });
 
+  $('#devCodeSaveRunBtn')?.addEventListener('click', async () => {
+    await saveThenRunDevCommand('run');
+  });
+
+  $('#devCodeSaveCheckBtn')?.addEventListener('click', async () => {
+    await saveThenRunDevCommand('check');
+  });
+
+  $('#devCodeSaveBuildBtn')?.addEventListener('click', async () => {
+    await saveThenRunDevCommand('build');
+  });
+
+  $('#devCodeSaveValidateBtn')?.addEventListener('click', async () => {
+    await saveThenRunDevCommand('validate');
+  });
+
+  $('#devCodeSaveInstallBtn')?.addEventListener('click', async () => {
+    await saveThenRunDevCommand('install');
+  });
+
+  $('#devCodeEditor')?.addEventListener('input', event => {
+    const editor = event.target;
+
+    if (editor?.dataset?.relativePath) {
+      editor.dataset.dirty = 'true';
+      setDevCodeInfo(`Unsaved changes: ${editor.dataset.relativePath}`);
+    }
+  });
+
   $('#devCodeEditor')?.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
       saveDevCodeFile();
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      saveThenRunDevCommand('run');
     }
 
     if (event.key === 'Tab') {
