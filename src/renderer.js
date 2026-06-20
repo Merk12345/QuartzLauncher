@@ -527,6 +527,27 @@ function addStyles() {
       color: #ffffff !important;
     }
 
+    .quartz-dev-status-card {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-dev-status-output {
+      min-height: 120px;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.1);
+      line-height: 1.45;
+      font-size: 12px;
+    }
+
     .quartz-dev-editor-card {
       margin-top: 16px;
       padding: 16px;
@@ -1612,6 +1633,7 @@ function bindButtons() {
     devLog(isOk(result) ? 'Build finished.' : 'Build finished with issues.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Build issue: ${getError(result, 'Validation found issues')}`);
     else setStatus('Package built successfully.');
+      refreshDevProjectStatus();
   });
 
   $('#devValidatePackageBtn')?.addEventListener('click', async () => {
@@ -1623,6 +1645,7 @@ function bindButtons() {
     devLog(isOk(result) ? 'Validation passed.' : 'Validation found issues.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Validation issue: ${getError(result, 'Validation found issues')}`);
     else setStatus('Package passed validation.');
+      refreshDevProjectStatus();
   });
 
   $('#devImportLocalBtn')?.addEventListener('click', async () => {
@@ -1634,6 +1657,7 @@ function bindButtons() {
     devLog(isOk(result) ? 'Test install finished.' : 'Test install failed.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Test install failed: ${getError(result)}`);
     else setStatus('Selected project build test installed.');
+      refreshDevProjectStatus();
     loadInstalledMods(true);
   });
 
@@ -1696,6 +1720,36 @@ function bindButtons() {
       setStatus('Could not copy package path.');
     }
   });
+
+  async function refreshDevProjectStatus(logToTerminal = false) {
+    const out = $('#devProjectStatusOutput');
+    const result = await window.quartzAPI.devGetProjectStatus(getSelectedDevProject());
+
+    if (out) {
+      out.textContent = result.output || getError(result, 'Could not load project status.');
+    }
+
+    if (logToTerminal) {
+      devTerminalLog(
+        isOk(result) ? 'Project status:' : 'Project status failed:',
+        result.output || getError(result)
+      );
+    }
+
+    if (isOk(result)) {
+      if (result.buildState === 'outdated') {
+        setStatus('Project build is outdated. Rebuild recommended.');
+      } else if (result.buildState === 'missing') {
+        setStatus('No build found for selected project yet.');
+      } else {
+        setStatus('Project build is up to date.');
+      }
+    } else {
+      setStatus(`Project status failed: ${getError(result)}`);
+    }
+
+    return result;
+  }
 
   function setDevCodeInfo(message) {
     const info = $('#devCodeEditorInfo');
@@ -1818,10 +1872,12 @@ function bindButtons() {
 
     setDevCodeInfo(`Saved: ${result.relativePath}`);
     setStatus(`Saved ${result.relativePath}`);
+    refreshDevProjectStatus();
     devLog(`Saved ${result.relativePath}`);
 
     if (result.relativePath === 'quartz.json') {
       refreshDevProjects();
+  refreshDevProjectStatus();
     }
 
     return result;
@@ -1877,6 +1933,7 @@ function bindButtons() {
         'Available safe commands:',
         '',
         'help       Show this command list',
+        'status     Show project tracking/build freshness',
         'ls         List files in the selected project',
         'tree       Show project folder tree',
         'manifest   Show quartz.json',
@@ -1898,6 +1955,11 @@ function bindButtons() {
         '',
         'Note: this is a controlled Dev Terminal, not a full system shell yet.'
       ].join('\n'));
+      return;
+    }
+
+    if (cmd === 'status') {
+      await refreshDevProjectStatus(true);
       return;
     }
 
@@ -1992,6 +2054,7 @@ function bindButtons() {
 
       if (!isOk(result)) setStatus(`Build issue: ${getError(result, 'Validation found issues')}`);
       else setStatus('Package built successfully.');
+      refreshDevProjectStatus();
 
       return;
     }
@@ -2010,6 +2073,7 @@ function bindButtons() {
 
       if (!isOk(result)) setStatus(`Validation issue: ${getError(result, 'Validation found issues')}`);
       else setStatus('Package passed validation.');
+      refreshDevProjectStatus();
 
       return;
     }
@@ -2028,6 +2092,7 @@ function bindButtons() {
 
       if (!isOk(result)) setStatus(`Test install failed: ${getError(result)}`);
       else setStatus('Selected project build test installed.');
+      refreshDevProjectStatus();
 
       loadInstalledMods(true);
       return;
@@ -2050,7 +2115,7 @@ function bindButtons() {
       return;
     }
 
-    const backendCommands = new Set(['ls', 'tree', 'manifest', 'check', 'run']);
+    const backendCommands = new Set(['status', 'ls', 'tree', 'manifest', 'check', 'run']);
 
     if (backendCommands.has(cmd)) {
       const result = await window.quartzAPI.devRunTerminalCommand(getSelectedDevProject(), cmd);
@@ -2102,6 +2167,10 @@ function bindButtons() {
     const out = $('#devTerminalOutput');
     if (out) out.textContent = 'Quartz Dev Terminal ready. Type help to see commands.';
     setStatus('Dev Terminal cleared.');
+  });
+
+  $('#devRefreshStatusBtn')?.addEventListener('click', async () => {
+    await refreshDevProjectStatus(true);
   });
 
   $('#devCodeRefreshFilesBtn')?.addEventListener('click', async () => {
@@ -2180,6 +2249,7 @@ function bindButtons() {
 
   $('#devProjectSelect')?.addEventListener('change', async () => {
     await refreshDevEditableFiles();
+    await refreshDevProjectStatus();
   });
 
 

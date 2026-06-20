@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('quartzAPI', {
   devListEditableFiles: (projectName) => ipcRenderer.invoke('dev-list-editable-files', projectName),
   devReadProjectFile: (projectName, relativePath) => ipcRenderer.invoke('dev-read-project-file', projectName, relativePath),
   devWriteProjectFile: (projectName, relativePath, content) => ipcRenderer.invoke('dev-write-project-file', projectName, relativePath, content),
+  devGetProjectStatus: (projectName) => ipcRenderer.invoke('dev-get-project-status', projectName),
 
   openModsFolder: () => ipcRenderer.invoke('open-mods-folder'),
 

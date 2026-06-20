@@ -1519,7 +1519,7 @@ ipcMain.handle('dev-run-terminal-command', async (_event, projectName = '', rawC
   try {
     const command = String(rawCommand || '').trim().toLowerCase().split(/\s+/)[0];
 
-    const allowed = new Set(['ls', 'tree', 'manifest', 'check', 'run']);
+    const allowed = new Set(['status', 'ls', 'tree', 'manifest', 'check', 'run']);
 
     if (!allowed.has(command)) {
       return {
@@ -1539,6 +1539,18 @@ ipcMain.handle('dev-run-terminal-command', async (_event, projectName = '', rawC
     }
 
     const manifest = qDevReadManifest(project.manifestPath);
+
+    if (command === 'status') {
+      const status = qDevGetProjectStatus(project.name);
+
+      return {
+        ok: true,
+        command,
+        projectName: project.name,
+        output: qDevFormatProjectStatus(status),
+        status
+      };
+    }
 
     if (command === 'ls') {
       const entries = fs
@@ -1897,6 +1909,154 @@ ipcMain.handle('dev-write-project-file', async (_event, projectName = '', relati
     return {
       ok: false,
       error: error.message
+    };
+  }
+});
+
+
+function qDevCollectProjectSourceStats(dir, rootDir, state = { latestMtimeMs: 0, fileCount: 0 }) {
+  if (!fs.existsSync(dir)) return state;
+
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter(entry => !qDevIgnoredTreeName(entry.name));
+
+  for (const entry of entries) {
+    const absolute = path.join(dir, entry.name);
+    const relative = path.relative(rootDir, absolute).replace(/\\/g, '/');
+
+    if (entry.isDirectory()) {
+      qDevCollectProjectSourceStats(absolute, rootDir, state);
+      continue;
+    }
+
+    if (entry.isFile() && qDevEditablePathIsAllowed(relative)) {
+      const stat = fs.statSync(absolute);
+      state.fileCount += 1;
+      state.latestMtimeMs = Math.max(state.latestMtimeMs, stat.mtimeMs);
+    }
+  }
+
+  return state;
+}
+
+function qDevFormatStatusTime(ms) {
+  if (!ms) return 'never';
+  return new Date(ms).toLocaleString();
+}
+
+function qDevGetProjectStatus(projectName = '') {
+  const project = qDevResolveWorkspaceProject(projectName);
+
+  if (!project) {
+    return {
+      ok: false,
+      error: 'No dev project selected. Create or select a project first.',
+      workspaceDir: qGetDevWorkspaceDir()
+    };
+  }
+
+  const manifest = qDevReadManifest(project.manifestPath);
+  const editableFiles = qDevListEditableFiles(project);
+  const sourceStats = qDevCollectProjectSourceStats(project.modDir, project.modDir);
+
+  let packagePath = '';
+  let packageExists = false;
+  let packageMtimeMs = 0;
+  let buildState = 'missing';
+
+  try {
+    packagePath = path.join(qGetDevBuildsDir(), qDevPackageFileName(manifest));
+    packageExists = fs.existsSync(packagePath);
+
+    if (packageExists) {
+      packageMtimeMs = fs.statSync(packagePath).mtimeMs;
+      buildState = packageMtimeMs >= sourceStats.latestMtimeMs ? 'fresh' : 'outdated';
+    }
+  } catch {
+    packagePath = '';
+    packageExists = false;
+    packageMtimeMs = 0;
+    buildState = 'missing';
+  }
+
+  let entryExists = false;
+  let entryPath = '';
+
+  try {
+    const entryInfo = qDevGetProjectEntryFile(project, manifest);
+    entryExists = true;
+    entryPath = entryInfo.entryPath;
+  } catch {
+    entryExists = false;
+    entryPath = '';
+  }
+
+  return {
+    ok: true,
+    projectName: project.name,
+    modDir: project.modDir,
+    manifestPath: project.manifestPath,
+    id: manifest.id || '',
+    name: manifest.name || project.name,
+    version: manifest.version || '',
+    engine: manifest.engine || '',
+    entry: manifest.entry || 'payload/main.js',
+    entryExists,
+    entryPath,
+    editableFileCount: editableFiles.length,
+    sourceFileCount: sourceStats.fileCount,
+    sourceLatestMtimeMs: sourceStats.latestMtimeMs,
+    sourceLatestTime: qDevFormatStatusTime(sourceStats.latestMtimeMs),
+    packagePath,
+    packageExists,
+    packageMtimeMs,
+    packageTime: qDevFormatStatusTime(packageMtimeMs),
+    buildState
+  };
+}
+
+function qDevFormatProjectStatus(status) {
+  if (!status?.ok) {
+    return status?.error || 'Project status failed.';
+  }
+
+  const buildLine = status.buildState === 'fresh'
+    ? 'Build: fresh / up to date'
+    : status.buildState === 'outdated'
+      ? 'Build: OUTDATED — source files changed after the latest package build'
+      : 'Build: missing — build this project';
+
+  return [
+    `Project: ${status.projectName}`,
+    `Name: ${status.name}`,
+    `ID: ${status.id}`,
+    `Version: ${status.version}`,
+    `Engine: ${status.engine}`,
+    `Entry: ${status.entry} ${status.entryExists ? '(found)' : '(missing)'}`,
+    `Editable files: ${status.editableFileCount}`,
+    `Source files tracked: ${status.sourceFileCount}`,
+    `Latest source edit: ${status.sourceLatestTime}`,
+    buildLine,
+    `Latest build: ${status.packageExists ? status.packagePath : '(none yet)'}`,
+    `Latest build time: ${status.packageTime}`,
+    `Project folder: ${status.modDir}`
+  ].join('\n');
+}
+
+ipcMain.handle('dev-get-project-status', async (_event, projectName = '') => {
+  try {
+    const status = qDevGetProjectStatus(projectName);
+
+    return {
+      ...status,
+      output: qDevFormatProjectStatus(status)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      output: error.stack || error.message
     };
   }
 });
