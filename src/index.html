@@ -112,47 +112,59 @@
       <section id="devtools" class="page">
         <div class="page-header">
           <h2>Dev Tools</h2>
-          <p>Tools and guides for creating, testing, and packaging Quartz mods.</p>
+          <p>Create, build, validate, and test Quartz mod packages.</p>
         </div>
 
         <div class="quartz-devtools-grid">
           <div class="quartz-dev-card">
-            <h3>📚 Developer Docs</h3>
-            <p>Open the Quartz Developer Center to read package rules, mod review info, and submission guidelines.</p>
-            <button id="openDevDocsBtn" class="secondary-btn">Open Dev Docs</button>
-          </div>
-
-          <div class="quartz-dev-card">
-            <h3>📦 Package Format</h3>
-            <p>Learn how a .quartz package should be structured, including the manifest, payload files, and metadata.</p>
-            <button id="openPackageDocsBtn" class="secondary-btn">Package Format Docs</button>
-          </div>
-
-          <div class="quartz-dev-card">
-            <h3>✅ Validate Package</h3>
-            <p>Check a .quartz package for common issues before sharing or submitting it.</p>
-            <button class="secondary-btn" disabled>Coming Soon</button>
-          </div>
-
-          <div class="quartz-dev-card">
-            <h3>🧪 Test Install</h3>
-            <p>Install a local package into Quartz for testing before it goes public.</p>
-            <button id="devImportLocalBtn" class="secondary-btn">Import Local Mod</button>
+            <h3>📁 Dev Workspace</h3>
+            <p>Open the Quartz dev workspace folder where starter mods and builds are stored.</p>
+            <button id="devOpenWorkspaceBtn" class="secondary-btn">Open Workspace</button>
           </div>
 
           <div class="quartz-dev-card">
             <h3>🧰 Create New Mod</h3>
-            <p>Start a new Quartz-native mod from a beginner-friendly template.</p>
-            <button class="secondary-btn" disabled>Coming Soon</button>
+            <p>Create a beginner-friendly Quartz-native starter mod with a manifest, payload, README, and changelog.</p>
+            <button id="devCreateTemplateBtn" class="secondary-btn">Create Starter Mod</button>
           </div>
 
           <div class="quartz-dev-card">
-            <h3>📤 Submit Mod</h3>
-            <p>Submit a finished package for review once the submission system is ready.</p>
-            <button class="secondary-btn" disabled>Coming Soon</button>
+            <h3>📦 Build Package</h3>
+            <p>Build the newest mod in your dev workspace into a .quartz package.</p>
+            <button id="devBuildPackageBtn" class="secondary-btn">Build Newest .quartz</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>✅ Validate Package</h3>
+            <p>Validate the newest .quartz package from your dev workspace builds folder.</p>
+            <button id="devValidatePackageBtn" class="secondary-btn">Validate Newest .quartz</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>🧪 Test Install</h3>
+            <p>Test install the newest built .quartz package into Quartz.</p>
+            <button id="devImportLocalBtn" class="secondary-btn">Test Install Newest</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>📚 Developer Docs</h3>
+            <p>Open the Quartz Developer Center for package rules, mod review info, and submission guidelines.</p>
+            <button id="openDevDocsBtn" class="secondary-btn">Open Dev Docs</button>
           </div>
         </div>
+
+        <div class="quartz-dev-console-card">
+          <div class="quartz-dev-console-header">
+            <h3>Dev Console</h3>
+            <div>
+              <button id="devCopyConsoleBtn" class="small-btn">Copy</button>
+              <button id="devClearConsoleBtn" class="small-btn">Clear</button>
+            </div>
+          </div>
+          <pre id="devConsole" class="quartz-dev-console">Quartz Dev Console ready.</pre>
+        </div>
       </section>
+
 
       <section id="settings" class="page">
         <div class="page-header">

@@ -736,6 +736,355 @@ ipcMain.handle('open-link', async (_event, url) => {
 });
 
 
+// ===== Quartz Developer Tools START =====
+
+function qGetDevWorkspaceDir() {
+  return path.join(app.getPath('userData'), 'dev-workspace');
+}
+
+function qGetDevBuildsDir() {
+  return path.join(qGetDevWorkspaceDir(), 'builds');
+}
+
+function qDevListWorkspaceProjects() {
+  const workspaceDir = qGetDevWorkspaceDir();
+  fs.mkdirSync(workspaceDir, { recursive: true });
+
+  return fs
+    .readdirSync(workspaceDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .filter(entry => !entry.name.startsWith('.'))
+    .filter(entry => entry.name !== 'builds')
+    .map(entry => {
+      const modDir = path.join(workspaceDir, entry.name);
+      const manifestPath = path.join(modDir, 'quartz.json');
+
+      if (!fs.existsSync(manifestPath)) return null;
+
+      const modStat = fs.statSync(modDir);
+      const manifestStat = fs.statSync(manifestPath);
+      const newestTime = Math.max(modStat.mtimeMs, manifestStat.mtimeMs);
+
+      return {
+        name: entry.name,
+        modDir,
+        manifestPath,
+        mtimeMs: newestTime
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+}
+
+function qDevGetNewestWorkspaceProject() {
+  return qDevListWorkspaceProjects()[0] || null;
+}
+
+function qDevListBuiltPackages() {
+  const buildsDir = qGetDevBuildsDir();
+  fs.mkdirSync(buildsDir, { recursive: true });
+
+  return fs
+    .readdirSync(buildsDir, { withFileTypes: true })
+    .filter(entry => entry.isFile())
+    .filter(entry => entry.name.toLowerCase().endsWith('.quartz'))
+    .map(entry => {
+      const packagePath = path.join(buildsDir, entry.name);
+      const stat = fs.statSync(packagePath);
+
+      return {
+        name: entry.name,
+        packagePath,
+        mtimeMs: stat.mtimeMs
+      };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+}
+
+function qDevGetNewestBuiltPackage() {
+  return qDevListBuiltPackages()[0] || null;
+}
+
+function qDevSlug(value, fallback = 'my-quartz-mod') {
+  const slug = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+
+  return slug || fallback;
+}
+
+function qDevValidationIsOk(validation) {
+  if (!validation) return false;
+  if (validation.ok === false) return false;
+  if (validation.valid === false) return false;
+  if (validation.error) return false;
+  if (Array.isArray(validation.errors) && validation.errors.length > 0) return false;
+  return true;
+}
+
+function qDevPackageFileName(manifest) {
+  const id = qDevSlug(manifest?.id || manifest?.name || 'quartz-mod');
+  const version = qDevSlug(manifest?.version || '0.1.0', '0.1.0');
+  return `${id}-${version}.quartz`;
+}
+
+function qDevAddFolderToZip(zip, sourceDir, rootDir) {
+  const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const absolute = path.join(sourceDir, entry.name);
+    const relative = path.relative(rootDir, absolute).replace(/\\/g, '/');
+
+    if (!relative || relative.startsWith('..')) continue;
+
+    const ignoredNames = new Set([
+      '.git',
+      'node_modules',
+      'dist',
+      'build',
+      'builds',
+      '.DS_Store'
+    ]);
+
+    if (ignoredNames.has(entry.name)) continue;
+    if (entry.name.endsWith('.quartz')) continue;
+
+    if (entry.isDirectory()) {
+      qDevAddFolderToZip(zip, absolute, rootDir);
+      continue;
+    }
+
+    const zipDir = path.dirname(relative) === '.' ? '' : path.dirname(relative);
+    zip.addLocalFile(absolute, zipDir);
+  }
+}
+
+function qDevBuildPackageFromFolder(sourceDir, outPath) {
+  const zip = new AdmZip();
+  qDevAddFolderToZip(zip, sourceDir, sourceDir);
+  zip.writeZip(outPath);
+}
+
+ipcMain.handle('dev-open-workspace-folder', async () => {
+  try {
+    const workspaceDir = qGetDevWorkspaceDir();
+    fs.mkdirSync(workspaceDir, { recursive: true });
+
+    const result = await shell.openPath(workspaceDir);
+
+    if (result) {
+      return { ok: false, error: result, workspaceDir };
+    }
+
+    return {
+      ok: true,
+      workspaceDir,
+      message: 'Opened Quartz dev workspace.'
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('dev-create-template', async () => {
+  try {
+    const workspaceDir = qGetDevWorkspaceDir();
+    fs.mkdirSync(workspaceDir, { recursive: true });
+
+    const baseName = 'my-quartz-mod';
+    let folderName = baseName;
+    let modDir = path.join(workspaceDir, folderName);
+    let counter = 2;
+
+    while (fs.existsSync(modDir)) {
+      folderName = `${baseName}-${counter}`;
+      modDir = path.join(workspaceDir, folderName);
+      counter += 1;
+    }
+
+    const payloadDir = path.join(modDir, 'payload');
+    fs.mkdirSync(payloadDir, { recursive: true });
+
+    const manifest = {
+      format: 'quartz.package',
+      formatVersion: 1,
+      id: `local.${folderName}`,
+      name: 'My Quartz Mod',
+      version: '0.1.0',
+      author: 'YourName',
+      engine: 'quartz-native',
+      entry: 'payload/main.js',
+      description: 'A starter Quartz-native mod.',
+      dependencies: [],
+      permissions: []
+    };
+
+    fs.writeFileSync(
+      path.join(modDir, 'quartz.json'),
+      JSON.stringify(manifest, null, 2) + '\n',
+      'utf8'
+    );
+
+    fs.writeFileSync(
+      path.join(payloadDir, 'main.js'),
+      `'use strict';\n\nconsole.log('Hello from My Quartz Mod!');\n\nmodule.exports = {\n  id: 'local.${folderName}',\n  name: 'My Quartz Mod'\n};\n`,
+      'utf8'
+    );
+
+    fs.writeFileSync(
+      path.join(modDir, 'README.md'),
+      `# My Quartz Mod\n\nThis is a starter Quartz-native mod created by Quartz Launcher Dev Tools.\n\n## Files\n\n- quartz.json - package manifest\n- payload/main.js - starter mod entry file\n`,
+      'utf8'
+    );
+
+    fs.writeFileSync(
+      path.join(modDir, 'CHANGELOG.md'),
+      `# Changelog\n\n## 0.1.0\n\n- Initial starter mod.\n`,
+      'utf8'
+    );
+
+    await shell.openPath(modDir);
+
+    return {
+      ok: true,
+      modDir,
+      manifest,
+      message: `Created starter mod at ${modDir}`
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('dev-build-quartz-package', async () => {
+  try {
+    const project = qDevGetNewestWorkspaceProject();
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project found. Click Create Starter Mod first.',
+        workspaceDir: qGetDevWorkspaceDir()
+      };
+    }
+
+    const sourceDir = project.modDir;
+    const manifestPath = project.manifestPath;
+
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Could not read quartz.json: ${error.message}`,
+        sourceDir
+      };
+    }
+
+    const buildsDir = qGetDevBuildsDir();
+    fs.mkdirSync(buildsDir, { recursive: true });
+
+    const outPath = path.join(buildsDir, qDevPackageFileName(manifest));
+    qDevBuildPackageFromFolder(sourceDir, outPath);
+
+    const validation = qValidateQuartzPackageFileSync(outPath);
+    const valid = qDevValidationIsOk(validation);
+
+    return {
+      ok: valid,
+      packagePath: outPath,
+      sourceDir,
+      manifest,
+      validation,
+      message: valid
+        ? `Built newest dev project: ${project.name}`
+        : `Built newest dev project, but validation found issues: ${project.name}`
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+
+ipcMain.handle('dev-validate-quartz-package', async () => {
+  try {
+    const latest = qDevGetNewestBuiltPackage();
+
+    if (!latest) {
+      return {
+        ok: false,
+        error: 'No built .quartz package found. Click Build .quartz first.',
+        buildsDir: qGetDevBuildsDir()
+      };
+    }
+
+    const packagePath = latest.packagePath;
+    const validation = qValidateQuartzPackageFileSync(packagePath);
+    const valid = qDevValidationIsOk(validation);
+
+    return {
+      ok: valid,
+      packagePath,
+      validation,
+      message: valid
+        ? `Newest built package passed validation: ${latest.name}`
+        : `Newest built package has validation issues: ${latest.name}`
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('dev-test-install-latest-package', async () => {
+  try {
+    const latest = qDevGetNewestBuiltPackage();
+
+    if (!latest) {
+      return {
+        ok: false,
+        error: 'No built .quartz package found. Click Build .quartz first.',
+        buildsDir: qGetDevBuildsDir()
+      };
+    }
+
+    const validation = qValidateQuartzBeforeUse(latest.packagePath, 'import');
+
+    if (!qDevValidationIsOk(validation)) {
+      return {
+        ok: false,
+        error: 'Newest package failed validation before test install.',
+        packagePath: latest.packagePath,
+        validation
+      };
+    }
+
+    qEnsureImportFolders();
+
+    const importPath = path.join(QUARTZ_NATIVE_IMPORTS_DIR, path.basename(latest.packagePath));
+    fs.copyFileSync(latest.packagePath, importPath);
+
+    const processResult = qProcessImportFolder();
+
+    return {
+      ok: processResult?.ok !== false,
+      packagePath: latest.packagePath,
+      importPath,
+      processResult,
+      message: `Test installed newest built package: ${latest.name}`
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+
+// ===== Quartz Developer Tools END =====
+
+
 // ===== Quartz Native Package Library OVERRIDE START =====
 
 function qNativeDataDir() {

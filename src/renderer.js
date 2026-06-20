@@ -52,6 +52,51 @@ function setStatus(text) {
   console.log('[Quartz]', text);
 }
 
+function devLog(message, details = null) {
+  const consoleEl = $('#devConsole');
+  const timestamp = new Date().toLocaleTimeString();
+
+  let line = `[${timestamp}] ${message}`;
+
+  if (details !== null && details !== undefined) {
+    if (typeof details === 'string') {
+      line += `\n${details}`;
+    } else {
+      line += `\n${JSON.stringify(details, null, 2)}`;
+    }
+  }
+
+  if (consoleEl) {
+    const current = consoleEl.textContent || '';
+    consoleEl.textContent = current && current !== 'Quartz Dev Console ready.'
+      ? `${current}\n\n${line}`
+      : line;
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  console.log('[Quartz Dev]', message, details ?? '');
+}
+
+function summarizeDevResult(result) {
+  if (!result) return 'No result returned.';
+
+  const lines = [];
+
+  if (result.message) lines.push(result.message);
+  if (result.workspaceDir) lines.push(`Workspace: ${result.workspaceDir}`);
+  if (result.modDir) lines.push(`Mod folder: ${result.modDir}`);
+  if (result.sourceDir) lines.push(`Source folder: ${result.sourceDir}`);
+  if (result.packagePath) lines.push(`Package: ${result.packagePath}`);
+  if (result.error) lines.push(`Error: ${result.error}`);
+
+  if (result.validation) {
+    lines.push('Validation:');
+    lines.push(JSON.stringify(result.validation, null, 2));
+  }
+
+  return lines.join('\n') || JSON.stringify(result, null, 2);
+}
+
 function showPage(pageId) {
   $all('.page').forEach(page => page.classList.remove('active-page'));
 
@@ -223,6 +268,39 @@ function addStyles() {
     .quartz-dev-card button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+
+    .quartz-dev-console-card {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-dev-console-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .quartz-dev-console-header h3 {
+      margin: 0;
+    }
+
+    .quartz-dev-console {
+      min-height: 180px;
+      max-height: 320px;
+      overflow: auto;
+      white-space: pre-wrap;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      line-height: 1.45;
+      font-size: 12px;
     }
 
     .quartz-links {
@@ -936,12 +1014,66 @@ function bindButtons() {
     else setStatus('Package docs opened in your browser.');
   });
 
+  $('#devOpenWorkspaceBtn')?.addEventListener('click', async () => {
+    setStatus('Opening dev workspace...');
+    devLog('Opening dev workspace...');
+    const result = await window.quartzAPI.devOpenWorkspaceFolder();
+    devLog(isOk(result) ? 'Workspace opened.' : 'Workspace failed.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Workspace failed: ${getError(result)}`);
+    else setStatus('Dev workspace opened.');
+  });
+
+  $('#devCreateTemplateBtn')?.addEventListener('click', async () => {
+    setStatus('Creating starter mod...');
+    devLog('Creating starter Quartz mod...');
+    const result = await window.quartzAPI.devCreateTemplate();
+    devLog(isOk(result) ? 'Starter mod created.' : 'Starter mod failed.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Create mod failed: ${getError(result)}`);
+    else setStatus('Starter mod created.');
+  });
+
+  $('#devBuildPackageBtn')?.addEventListener('click', async () => {
+    setStatus('Building .quartz package...');
+    devLog('Building .quartz package...');
+    const result = await window.quartzAPI.devBuildQuartzPackage();
+    devLog(isOk(result) ? 'Build finished.' : 'Build finished with issues.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Build issue: ${getError(result, 'Validation found issues')}`);
+    else setStatus('Package built successfully.');
+  });
+
+  $('#devValidatePackageBtn')?.addEventListener('click', async () => {
+    setStatus('Validating .quartz package...');
+    devLog('Validating .quartz package...');
+    const result = await window.quartzAPI.devValidateQuartzPackage();
+    devLog(isOk(result) ? 'Validation passed.' : 'Validation found issues.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Validation issue: ${getError(result, 'Validation found issues')}`);
+    else setStatus('Package passed validation.');
+  });
+
   $('#devImportLocalBtn')?.addEventListener('click', async () => {
-    setStatus('Opening local mod import...');
-    const result = await window.quartzAPI.importLocalModFile();
-    if (!isOk(result)) setStatus(`Import failed: ${getError(result)}`);
-    else setStatus('Local mod imported.');
+    setStatus('Test installing newest built package...');
+    devLog('Test installing newest built package...');
+    const result = await window.quartzAPI.devTestInstallLatestPackage();
+    devLog(isOk(result) ? 'Test install finished.' : 'Test install failed.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Test install failed: ${getError(result)}`);
+    else setStatus('Newest built package test installed.');
     loadInstalledMods(true);
+  });
+
+  $('#devClearConsoleBtn')?.addEventListener('click', () => {
+    const consoleEl = $('#devConsole');
+    if (consoleEl) consoleEl.textContent = 'Quartz Dev Console ready.';
+    setStatus('Dev Console cleared.');
+  });
+
+  $('#devCopyConsoleBtn')?.addEventListener('click', async () => {
+    const text = $('#devConsole')?.textContent || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus('Dev Console copied.');
+    } catch (_error) {
+      setStatus('Could not copy Dev Console.');
+    }
   });
 
   $('#installISLBtn')?.addEventListener('click', async () => {

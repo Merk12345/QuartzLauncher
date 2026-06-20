@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld('quartzAPI', {
   openQuartzModsFolder: () => ipcRenderer.invoke('open-quartz-mods-folder'),
   autoScanQuartzModsFolder: () => ipcRenderer.invoke('auto-scan-quartz-mods-folder'),
 
+  devOpenWorkspaceFolder: () => ipcRenderer.invoke('dev-open-workspace-folder'),
+  devCreateTemplate: () => ipcRenderer.invoke('dev-create-template'),
+  devBuildQuartzPackage: () => ipcRenderer.invoke('dev-build-quartz-package'),
+  devValidateQuartzPackage: () => ipcRenderer.invoke('dev-validate-quartz-package'),
+  devTestInstallLatestPackage: () => ipcRenderer.invoke('dev-test-install-latest-package'),
+
   openModsFolder: () => ipcRenderer.invoke('open-mods-folder'),
 
   installISL: () => ipcRenderer.invoke('install-isl'),
