@@ -1,46 +1,5 @@
 [
   {
-    "id": "cvolton.betterinfo",
-    "name": "BetterInfo",
-    "developer": "cvolton",
-    "version": "4.4.5",
-    "description": "betterinfo geode real (not fake)",
-    "engine": "geode-compat",
-    "category": "online",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "online",
-      "enhancement",
-      "interface",
-      "utility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 5196616,
-    "geodeVersion": "5.3.0",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "4.4.5",
-    "geodeModId": "cvolton.betterinfo",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/cvolton.betterinfo/versions/4.4.5/download",
-    "geodeHash": "c3f316a517184bc46df34a65e402835f0dbd4bee5c9034c1a74a84049ed3a691",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/cvolton/betterinfo-geode"
-    },
-    "updatedAt": "2026-03-25T15:31:07Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
     "id": "blueblock6.cleanstartpos",
     "name": "Clean StartPos",
     "developer": "BlueBlock6",
@@ -6281,6 +6240,46 @@
       "source": null
     },
     "updatedAt": "2026-02-23T23:13:44Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "cvolton.betterinfo",
+    "name": "BetterInfo",
+    "developer": "cvolton",
+    "version": "4.4.5",
+    "description": "betterinfo geode real (not fake)",
+    "engine": "geode-compat",
+    "category": "online",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "online",
+      "enhancement",
+      "interface",
+      "utility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 5196616,
+    "geodeVersion": "5.3.0",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "4.4.5",
+    "geodeModId": "cvolton.betterinfo",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/cvolton.betterinfo/versions/4.4.5/download",
+    "geodeHash": "c3f316a517184bc46df34a65e402835f0dbd4bee5c9034c1a74a84049ed3a691",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/cvolton/betterinfo-geode"
+    },
+    "updatedAt": "2026-03-25T15:31:07Z",
     "installMode": "download-and-wrap-geode"
   },
   {
