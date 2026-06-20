@@ -8,7 +8,8 @@ const state = {
   installedPage: 1,
   pageSize: 12,
   devProjects: [],
-  selectedDevProject: '' 
+  selectedDevProject: '',
+  lastDevPackagePath: '' 
 };
 
 function $(selector) {
@@ -77,6 +78,12 @@ function devLog(message, details = null) {
   }
 
   console.log('[Quartz Dev]', message, details ?? '');
+}
+
+function rememberDevPackagePath(result) {
+  if (result?.packagePath) {
+    state.lastDevPackagePath = result.packagePath;
+  }
 }
 
 function summarizeDevResult(result) {
@@ -1404,6 +1411,7 @@ function bindButtons() {
     devLog('Building .quartz package...');
     const projectName = getSelectedDevProject();
     const result = await window.quartzAPI.devBuildQuartzPackage(projectName);
+    rememberDevPackagePath(result);
     devLog(isOk(result) ? 'Build finished.' : 'Build finished with issues.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Build issue: ${getError(result, 'Validation found issues')}`);
     else setStatus('Package built successfully.');
@@ -1414,6 +1422,7 @@ function bindButtons() {
     devLog('Validating .quartz package...');
     const projectName = getSelectedDevProject();
     const result = await window.quartzAPI.devValidateQuartzPackage(projectName);
+    rememberDevPackagePath(result);
     devLog(isOk(result) ? 'Validation passed.' : 'Validation found issues.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Validation issue: ${getError(result, 'Validation found issues')}`);
     else setStatus('Package passed validation.');
@@ -1424,6 +1433,7 @@ function bindButtons() {
     devLog('Test installing selected project build...');
     const projectName = getSelectedDevProject();
     const result = await window.quartzAPI.devTestInstallLatestPackage(projectName);
+    rememberDevPackagePath(result);
     devLog(isOk(result) ? 'Test install finished.' : 'Test install failed.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Test install failed: ${getError(result)}`);
     else setStatus('Selected project build test installed.');
@@ -1453,6 +1463,41 @@ function bindButtons() {
     devLog(isOk(result) ? 'Project folder opened.' : 'Project folder failed.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Open project failed: ${getError(result)}`);
     else setStatus('Project folder opened.');
+  });
+
+  $('#devOpenBuildsBtn')?.addEventListener('click', async () => {
+    setStatus('Opening builds folder...');
+    devLog('Opening builds folder...');
+    const result = await window.quartzAPI.devOpenBuildsFolder();
+    devLog(isOk(result) ? 'Builds folder opened.' : 'Builds folder failed.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Open builds failed: ${getError(result)}`);
+    else setStatus('Builds folder opened.');
+  });
+
+  $('#devCopyPackagePathBtn')?.addEventListener('click', async () => {
+    if (!state.lastDevPackagePath) {
+      devLog('No remembered package path. Checking builds folder for latest package...');
+      const latest = await window.quartzAPI.devGetLatestBuiltPackage();
+
+      if (isOk(latest) && latest.packagePath) {
+        rememberDevPackagePath(latest);
+        devLog('Found latest built package.', latest.packagePath);
+      }
+    }
+
+    if (!state.lastDevPackagePath) {
+      setStatus('No built package found yet. Build a .quartz package first.');
+      devLog('No package path available yet.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(state.lastDevPackagePath);
+      setStatus('Latest package path copied.');
+      devLog('Copied latest package path.', state.lastDevPackagePath);
+    } catch (_error) {
+      setStatus('Could not copy package path.');
+    }
   });
 
   $('#devClearConsoleBtn')?.addEventListener('click', () => {

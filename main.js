@@ -937,18 +937,28 @@ ipcMain.handle('dev-open-workspace-folder', async () => {
   }
 });
 
-ipcMain.handle('dev-create-template', async () => {
+ipcMain.handle('dev-create-template', async (_event, options = {}) => {
   try {
     const workspaceDir = qGetDevWorkspaceDir();
     fs.mkdirSync(workspaceDir, { recursive: true });
 
-    const baseName = 'my-quartz-mod';
-    let folderName = baseName;
+    const requestedName = String(options.name || 'My Quartz Mod').trim() || 'My Quartz Mod';
+    const requestedId = String(options.id || '').trim();
+    const requestedAuthor = String(options.author || 'YourName').trim() || 'YourName';
+    const requestedDescription = String(options.description || 'A starter Quartz-native mod.').trim() || 'A starter Quartz-native mod.';
+    const requestedTemplate = String(options.template || 'basic').trim() || 'basic';
+
+    const baseSlug = qDevSlug(requestedId || requestedName, 'my-quartz-mod').replace(/^local\./, '');
+    const safeId = requestedId
+      ? qDevSlug(requestedId, `local.${baseSlug}`)
+      : `local.${baseSlug}`;
+
+    let folderName = baseSlug;
     let modDir = path.join(workspaceDir, folderName);
     let counter = 2;
 
     while (fs.existsSync(modDir)) {
-      folderName = `${baseName}-${counter}`;
+      folderName = `${baseSlug}-${counter}`;
       modDir = path.join(workspaceDir, folderName);
       counter += 1;
     }
@@ -956,18 +966,23 @@ ipcMain.handle('dev-create-template', async () => {
     const payloadDir = path.join(modDir, 'payload');
     fs.mkdirSync(payloadDir, { recursive: true });
 
+    const finalId = folderName === baseSlug
+      ? safeId
+      : `${safeId}-${counter - 1}`;
+
     const manifest = {
       format: 'quartz.package',
       formatVersion: 1,
-      id: `local.${folderName}`,
-      name: 'My Quartz Mod',
+      id: finalId,
+      name: requestedName,
       version: '0.1.0',
-      author: 'YourName',
+      author: requestedAuthor,
       engine: 'quartz-native',
       entry: 'payload/main.js',
-      description: 'A starter Quartz-native mod.',
+      description: requestedDescription,
       dependencies: [],
-      permissions: []
+      permissions: [],
+      template: requestedTemplate
     };
 
     fs.writeFileSync(
@@ -976,15 +991,27 @@ ipcMain.handle('dev-create-template', async () => {
       'utf8'
     );
 
+    const starterMain = [
+      "'use strict';",
+      "",
+      `console.log(${JSON.stringify(`Hello from ${requestedName}!`)});`,
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(finalId)},`,
+      `  name: ${JSON.stringify(requestedName)}`,
+      "};",
+      ""
+    ].join('\n');
+
     fs.writeFileSync(
       path.join(payloadDir, 'main.js'),
-      `'use strict';\n\nconsole.log('Hello from My Quartz Mod!');\n\nmodule.exports = {\n  id: 'local.${folderName}',\n  name: 'My Quartz Mod'\n};\n`,
+      starterMain,
       'utf8'
     );
 
     fs.writeFileSync(
       path.join(modDir, 'README.md'),
-      `# My Quartz Mod\n\nThis is a starter Quartz-native mod created by Quartz Launcher Dev Tools.\n\n## Files\n\n- quartz.json - package manifest\n- payload/main.js - starter mod entry file\n`,
+      `# ${requestedName}\n\n${requestedDescription}\n\nCreated with Quartz Launcher Dev Tools.\n\n## Files\n\n- quartz.json - package manifest\n- payload/main.js - starter mod entry file\n`,
       'utf8'
     );
 
@@ -1000,12 +1027,13 @@ ipcMain.handle('dev-create-template', async () => {
       ok: true,
       modDir,
       manifest,
-      message: `Created starter mod at ${modDir}`
+      message: `Created starter mod: ${requestedName}`
     };
   } catch (error) {
     return { ok: false, error: error.message };
   }
 });
+
 
 ipcMain.handle('dev-list-projects', async () => {
   try {
@@ -1202,6 +1230,52 @@ ipcMain.handle('dev-test-install-latest-package', async (_event, projectName = '
 });
 
 
+
+
+ipcMain.handle('dev-open-builds-folder', async () => {
+  try {
+    const buildsDir = qGetDevBuildsDir();
+    fs.mkdirSync(buildsDir, { recursive: true });
+
+    const result = await shell.openPath(buildsDir);
+
+    if (result) {
+      return { ok: false, error: result, buildsDir };
+    }
+
+    return {
+      ok: true,
+      buildsDir,
+      message: 'Opened Quartz dev builds folder.'
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+
+ipcMain.handle('dev-get-latest-built-package', async () => {
+  try {
+    const latest = qDevGetNewestBuiltPackage();
+
+    if (!latest) {
+      return {
+        ok: false,
+        error: 'No built .quartz package found yet.',
+        buildsDir: qGetDevBuildsDir()
+      };
+    }
+
+    return {
+      ok: true,
+      packagePath: latest.packagePath,
+      name: latest.name,
+      message: `Newest built package: ${latest.name}`
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
 
 // ===== Quartz Developer Tools END =====
 
