@@ -327,3 +327,51 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.doc-grid {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.doc-card,
+.doc-panel {
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--panel);
+  padding: 24px;
+}
+
+.doc-card h3,
+.doc-panel h3 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+.doc-card p,
+.doc-panel p {
+  font-size: 15px;
+}
+
+.doc-panel {
+  margin-top: 18px;
+  background: var(--panel-strong);
+}
+
+.doc-list {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-left: 22px;
+}
+
+.doc-list li {
+  margin: 6px 0;
+}
+
+@media (max-width: 850px) {
+  .doc-grid {
+    grid-template-columns: 1fr;
+  }
+}
