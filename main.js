@@ -1465,7 +1465,9 @@ function qDevTreeLines(dir, rootDir, prefix = '', depth = 0, state = { count: 0 
 
 function qDevRunStarterInSandbox(entryInfo) {
   const vm = require('vm');
+  const NL = String.fromCharCode(10);
   const logs = [];
+  const moduleCache = new Map();
 
   const capture = (...args) => {
     logs.push(args.map(value => {
@@ -1478,41 +1480,144 @@ function qDevRunStarterInSandbox(entryInfo) {
     }).join(' '));
   };
 
-  const sandbox = {
-    console: {
-      log: capture,
-      warn: (...args) => capture('[warn]', ...args),
-      error: (...args) => capture('[error]', ...args)
-    },
-    module: {
-      exports: {}
-    }
+  const consoleBridge = {
+    log: capture,
+    warn: (...args) => capture('[warn]', ...args),
+    error: (...args) => capture('[error]', ...args)
   };
 
-  sandbox.exports = sandbox.module.exports;
+  const entryPath = path.resolve(entryInfo.entryPath);
+  const entryParts = String(entryInfo.entry || '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean);
 
-  vm.createContext(sandbox);
-  vm.runInContext(entryInfo.code, sandbox, {
-    filename: entryInfo.entryPath,
-    timeout: 1000
-  });
+  let payloadRoot = path.dirname(entryPath);
+  const payloadIndex = entryParts.indexOf('payload');
 
+  if (payloadIndex >= 0) {
+    const upCount = Math.max(0, entryParts.length - payloadIndex - 2);
+    payloadRoot = path.resolve(path.dirname(entryPath), ...Array(upCount).fill('..'));
+  }
+
+  const isInsidePayload = (filePath) => {
+    const relative = path.relative(payloadRoot, filePath);
+    return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+  };
+
+  const resolveLocalRequire = (fromFile, request) => {
+    const requested = String(request || '');
+
+    if (!requested || requested.includes('\0')) {
+      throw new Error('Invalid require path.');
+    }
+
+    if (!requested.startsWith('./') && !requested.startsWith('../')) {
+      throw new Error(`Sandbox require only supports local files. Blocked: ${requested}`);
+    }
+
+    const basePath = path.resolve(path.dirname(fromFile), requested);
+    const candidates = [];
+
+    if (path.extname(basePath)) {
+      candidates.push(basePath);
+    } else {
+      candidates.push(`${basePath}.js`);
+      candidates.push(`${basePath}.json`);
+      candidates.push(path.join(basePath, 'index.js'));
+      candidates.push(path.join(basePath, 'index.json'));
+    }
+
+    for (const candidate of candidates) {
+      const resolved = path.resolve(candidate);
+
+      if (!isInsidePayload(resolved)) {
+        throw new Error(`Sandbox require cannot leave payload folder: ${requested}`);
+      }
+
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+        return resolved;
+      }
+    }
+
+    throw new Error(`Cannot find local module: ${requested}`);
+  };
+
+  const loadModule = (filePath, codeOverride = null) => {
+    const resolved = path.resolve(filePath);
+
+    if (!isInsidePayload(resolved)) {
+      throw new Error(`Sandbox blocked file outside payload folder: ${resolved}`);
+    }
+
+    if (moduleCache.has(resolved)) {
+      return moduleCache.get(resolved).exports;
+    }
+
+    const extension = path.extname(resolved).toLowerCase();
+    const mod = {
+      exports: {}
+    };
+
+    moduleCache.set(resolved, mod);
+
+    if (extension === '.json') {
+      const jsonText = codeOverride === null
+        ? fs.readFileSync(resolved, 'utf8')
+        : String(codeOverride);
+
+      mod.exports = JSON.parse(jsonText);
+      return mod.exports;
+    }
+
+    if (extension !== '.js') {
+      throw new Error(`Sandbox require only supports .js and .json files: ${resolved}`);
+    }
+
+    const code = codeOverride === null
+      ? fs.readFileSync(resolved, 'utf8')
+      : String(codeOverride);
+
+    const localRequire = (request) => {
+      const requiredPath = resolveLocalRequire(resolved, request);
+      return loadModule(requiredPath);
+    };
+
+    const sandbox = {
+      console: consoleBridge,
+      module: mod,
+      exports: mod.exports,
+      require: localRequire,
+      __filename: resolved,
+      __dirname: path.dirname(resolved)
+    };
+
+    vm.createContext(sandbox);
+    vm.runInContext(code, sandbox, {
+      filename: resolved,
+      timeout: 1000
+    });
+
+    return mod.exports;
+  };
+
+  const exportedModule = loadModule(entryPath, entryInfo.code);
   let exported = '';
 
   try {
-    exported = JSON.stringify(sandbox.module.exports, null, 2);
+    exported = JSON.stringify(exportedModule, null, 2);
   } catch {
-    exported = String(sandbox.module.exports);
+    exported = String(exportedModule);
   }
 
   return [
     `Ran ${entryInfo.entry}`,
     '',
-    logs.length ? logs.join('\n') : '(no console output)',
+    logs.length ? logs.join(NL) : '(no console output)',
     '',
     'module.exports:',
     exported
-  ].join('\n');
+  ].join(NL);
 }
 
 ipcMain.handle('dev-run-terminal-command', async (_event, projectName = '', rawCommand = '') => {
