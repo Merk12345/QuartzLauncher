@@ -1626,6 +1626,281 @@ ipcMain.handle('dev-run-terminal-command', async (_event, projectName = '', rawC
   }
 });
 
+
+function qDevNormalizeEditablePath(relativePath = '') {
+  const normalized = String(relativePath || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .trim();
+
+  if (!normalized) {
+    throw new Error('No file selected.');
+  }
+
+  if (normalized.includes('\0') || normalized.split('/').includes('..')) {
+    throw new Error('Unsafe file path.');
+  }
+
+  return normalized;
+}
+
+function qDevEditablePathIsAllowed(relativePath) {
+  if (['quartz.json', 'README.md', 'CHANGELOG.md'].includes(relativePath)) {
+    return true;
+  }
+
+  if (!relativePath.startsWith('payload/')) {
+    return false;
+  }
+
+  const allowedExtensions = new Set([
+    '.js',
+    '.json',
+    '.md',
+    '.txt',
+    '.css',
+    '.html'
+  ]);
+
+  return allowedExtensions.has(path.extname(relativePath).toLowerCase());
+}
+
+function qDevGetEditableFilePath(project, relativePath) {
+  const normalized = qDevNormalizeEditablePath(relativePath);
+
+  if (!qDevEditablePathIsAllowed(normalized)) {
+    throw new Error(`File is not editable from Dev Tools yet: ${normalized}`);
+  }
+
+  const filePath = qDevSafeResolve(project.modDir, path.join(project.modDir, normalized));
+
+  return {
+    relativePath: normalized,
+    filePath
+  };
+}
+
+function qDevCollectEditableFiles(dir, rootDir, files, state = { count: 0 }) {
+  if (!fs.existsSync(dir) || state.count > 220) return;
+
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter(entry => !qDevIgnoredTreeName(entry.name))
+    .sort((a, b) => {
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  for (const entry of entries) {
+    if (state.count > 220) return;
+
+    const absolute = path.join(dir, entry.name);
+    const relative = path.relative(rootDir, absolute).replace(/\\/g, '/');
+
+    if (entry.isDirectory()) {
+      qDevCollectEditableFiles(absolute, rootDir, files, state);
+      continue;
+    }
+
+    if (qDevEditablePathIsAllowed(relative)) {
+      files.add(relative);
+      state.count += 1;
+    }
+  }
+}
+
+function qDevListEditableFiles(project) {
+  const files = new Set();
+
+  const addIfEditableFile = relativePath => {
+    try {
+      const normalized = qDevNormalizeEditablePath(relativePath);
+
+      if (!qDevEditablePathIsAllowed(normalized)) return;
+
+      const absolute = qDevSafeResolve(project.modDir, path.join(project.modDir, normalized));
+
+      if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
+        files.add(normalized);
+      }
+    } catch {
+      // Ignore bad/missing optional files.
+    }
+  };
+
+  // Always try the manifest entry first, because that is the real mod entry file.
+  try {
+    const manifest = qDevReadManifest(project.manifestPath);
+    addIfEditableFile(manifest.entry || 'payload/main.js');
+  } catch {
+    addIfEditableFile('payload/main.js');
+  }
+
+  const priorityFiles = [
+    'payload/main.js',
+    'payload/settings.json',
+    'quartz.json',
+    'README.md',
+    'CHANGELOG.md'
+  ];
+
+  for (const relativePath of priorityFiles) {
+    addIfEditableFile(relativePath);
+  }
+
+  qDevCollectEditableFiles(path.join(project.modDir, 'payload'), project.modDir, files);
+
+  return [...files]
+    .filter(relativePath => {
+      const absolute = path.join(project.modDir, relativePath);
+      return fs.existsSync(absolute) && fs.statSync(absolute).isFile();
+    })
+    .map(relativePath => {
+      const absolute = path.join(project.modDir, relativePath);
+      const stat = fs.statSync(absolute);
+
+      return {
+        relativePath,
+        label: relativePath,
+        size: stat.size,
+        mtimeMs: stat.mtimeMs
+      };
+    })
+    .sort((a, b) => {
+      const order = ['payload/main.js', 'quartz.json', 'payload/settings.json', 'README.md', 'CHANGELOG.md'];
+      const aIndex = order.indexOf(a.relativePath);
+      const bIndex = order.indexOf(b.relativePath);
+
+      if (aIndex !== -1 || bIndex !== -1) {
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      }
+
+      return a.relativePath.localeCompare(b.relativePath);
+    });
+}
+
+ipcMain.handle('dev-list-editable-files' , async (_event, projectName = '') => {
+  try {
+    const project = qDevResolveWorkspaceProject(projectName);
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project selected. Create or select a project first.',
+        files: []
+      };
+    }
+
+    return {
+      ok: true,
+      projectName: project.name,
+      modDir: project.modDir,
+      files: qDevListEditableFiles(project)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      files: []
+    };
+  }
+});
+
+ipcMain.handle('dev-read-project-file', async (_event, projectName = '', relativePath = '') => {
+  try {
+    const project = qDevResolveWorkspaceProject(projectName);
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project selected. Create or select a project first.'
+      };
+    }
+
+    const editable = qDevGetEditableFilePath(project, relativePath);
+
+    if (!fs.existsSync(editable.filePath) || !fs.statSync(editable.filePath).isFile()) {
+      return {
+        ok: false,
+        error: `File does not exist: ${editable.relativePath}`
+      };
+    }
+
+    return {
+      ok: true,
+      projectName: project.name,
+      relativePath: editable.relativePath,
+      filePath: editable.filePath,
+      content: fs.readFileSync(editable.filePath, 'utf8')
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('dev-write-project-file', async (_event, projectName = '', relativePath = '', content = '') => {
+  try {
+    const project = qDevResolveWorkspaceProject(projectName);
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project selected. Create or select a project first.'
+      };
+    }
+
+    const editable = qDevGetEditableFilePath(project, relativePath);
+    const nextContent = String(content ?? '');
+
+    if (!fs.existsSync(editable.filePath) || !fs.statSync(editable.filePath).isFile()) {
+      return {
+        ok: false,
+        error: `File does not exist: ${editable.relativePath}`
+      };
+    }
+
+    if (Buffer.byteLength(nextContent, 'utf8') > 512 * 1024) {
+      return {
+        ok: false,
+        error: 'File is too large for the built-in editor.'
+      };
+    }
+
+    if (editable.relativePath.endsWith('.json')) {
+      try {
+        JSON.parse(nextContent);
+      } catch (error) {
+        return {
+          ok: false,
+          error: `JSON is not valid: ${error.message}`
+        };
+      }
+    }
+
+    fs.writeFileSync(editable.filePath, nextContent, 'utf8');
+
+    const stat = fs.statSync(editable.filePath);
+
+    return {
+      ok: true,
+      projectName: project.name,
+      relativePath: editable.relativePath,
+      filePath: editable.filePath,
+      size: stat.size,
+      message: `Saved ${editable.relativePath}`
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message
+    };
+  }
+});
+
 // ===== Quartz Developer Tools END =====
 
 

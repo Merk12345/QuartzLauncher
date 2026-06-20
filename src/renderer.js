@@ -506,6 +506,70 @@ function addStyles() {
       font-size: 12px;
     }
 
+
+    .quartz-dev-select,
+    .quartz-dev-select option,
+    .quartz-dev-select optgroup,
+    #devCodeFileSelect,
+    #devCodeFileSelect option,
+    #devCodeFileSelect optgroup,
+    #devProjectSelect,
+    #devProjectSelect option,
+    #devProjectSelect optgroup {
+      background-color: #1f2430 !important;
+      color: #f5f7ff !important;
+    }
+
+    .quartz-dev-select option:checked,
+    #devCodeFileSelect option:checked,
+    #devProjectSelect option:checked {
+      background-color: #2d63c8 !important;
+      color: #ffffff !important;
+    }
+
+    .quartz-dev-editor-card {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-dev-editor-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .quartz-dev-code-editor {
+      width: 100%;
+      min-height: 320px;
+      max-height: 620px;
+      resize: vertical;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.34);
+      color: #f5f7ff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      tab-size: 2;
+      outline: none;
+    }
+
+    .quartz-dev-code-editor:focus {
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .quartz-dev-code-info {
+      margin-top: 8px;
+      font-size: 12px;
+      opacity: 0.82;
+      word-break: break-word;
+    }
+
     .quartz-dev-terminal-card {
       margin-top: 16px;
       padding: 16px;
@@ -1626,6 +1690,134 @@ function bindButtons() {
     }
   });
 
+  function setDevCodeInfo(message) {
+    const info = $('#devCodeEditorInfo');
+    if (info) info.textContent = message || 'No file open yet.';
+  }
+
+  function getDevSelectedCodeFile() {
+    const select = $('#devCodeFileSelect');
+    const editor = $('#devCodeEditor');
+
+    return select?.value || editor?.dataset.relativePath || '';
+  }
+
+  async function refreshDevEditableFiles(preferredPath = '') {
+    const select = $('#devCodeFileSelect');
+    if (!select) return { ok: false, error: 'Code editor file select not found.' };
+
+    const projectName = getSelectedDevProject();
+    const result = await window.quartzAPI.devListEditableFiles(projectName);
+
+    select.innerHTML = '';
+
+    if (!isOk(result)) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = getError(result, 'No editable files found.');
+      select.appendChild(option);
+      setDevCodeInfo(getError(result, 'No editable files found.'));
+      return result;
+    }
+
+    const files = Array.isArray(result.files) ? result.files : [];
+
+    if (!files.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'No editable files found';
+      select.appendChild(option);
+      setDevCodeInfo('No editable files found for this project.');
+      return result;
+    }
+
+    for (const file of files) {
+      const option = document.createElement('option');
+      option.value = file.relativePath;
+      option.textContent = file.label || file.relativePath;
+      select.appendChild(option);
+    }
+
+    const chosen = preferredPath && files.some(file => file.relativePath === preferredPath)
+      ? preferredPath
+      : files[0].relativePath;
+
+    select.value = chosen;
+    setDevCodeInfo(`Editable files loaded for ${result.projectName}.`);
+
+    return result;
+  }
+
+  async function openDevCodeFile(relativePath = '') {
+    const editor = $('#devCodeEditor');
+    if (!editor) return { ok: false, error: 'Code editor not found.' };
+
+    const fileToOpen = relativePath || getDevSelectedCodeFile();
+
+    if (!fileToOpen) {
+      setDevCodeInfo('Select a file first.');
+      return { ok: false, error: 'Select a file first.' };
+    }
+
+    const result = await window.quartzAPI.devReadProjectFile(getSelectedDevProject(), fileToOpen);
+
+    if (!isOk(result)) {
+      setDevCodeInfo(`Open failed: ${getError(result)}`);
+      setStatus(`Open file failed: ${getError(result)}`);
+      return result;
+    }
+
+    const select = $('#devCodeFileSelect');
+    if (select) select.value = result.relativePath;
+
+    editor.value = result.content || '';
+    editor.dataset.relativePath = result.relativePath;
+    editor.dataset.projectName = result.projectName || '';
+
+    setDevCodeInfo(`Open: ${result.relativePath}`);
+    setStatus(`Opened ${result.relativePath}`);
+
+    return result;
+  }
+
+  async function saveDevCodeFile() {
+    const editor = $('#devCodeEditor');
+
+    if (!editor) {
+      return { ok: false, error: 'Code editor not found.' };
+    }
+
+    const relativePath = editor.dataset.relativePath || getDevSelectedCodeFile();
+
+    if (!relativePath) {
+      setDevCodeInfo('Open a file before saving.');
+      return { ok: false, error: 'Open a file before saving.' };
+    }
+
+    const result = await window.quartzAPI.devWriteProjectFile(
+      getSelectedDevProject(),
+      relativePath,
+      editor.value
+    );
+
+    if (!isOk(result)) {
+      setDevCodeInfo(`Save failed: ${getError(result)}`);
+      setStatus(`Save failed: ${getError(result)}`);
+      devLog(`Save failed for ${relativePath}: ${getError(result)}`);
+      return result;
+    }
+
+    setDevCodeInfo(`Saved: ${result.relativePath}`);
+    setStatus(`Saved ${result.relativePath}`);
+    devLog(`Saved ${result.relativePath}`);
+
+    if (result.relativePath === 'quartz.json') {
+      refreshDevProjects();
+    }
+
+    return result;
+  }
+
   function devTerminalLog(message, details = null) {
     const out = $('#devTerminalOutput');
     if (!out) return;
@@ -1665,6 +1857,9 @@ function bindButtons() {
         'ls         List files in the selected project',
         'tree       Show project folder tree',
         'manifest   Show quartz.json',
+        'files      List editable project files',
+        'edit-main  Open payload/main.js in Code Editor',
+        'edit-manifest Open quartz.json in Code Editor',
         'check      Check starter JS syntax',
         'run        Run starter JS',
         'build      Build selected project',
@@ -1675,6 +1870,47 @@ function bindButtons() {
         '',
         'Note: this is a controlled Dev Terminal, not a full system shell yet.'
       ].join('\n'));
+      return;
+    }
+
+    if (cmd === 'files') {
+      const result = await refreshDevEditableFiles();
+
+      if (isOk(result)) {
+        const files = Array.isArray(result.files) ? result.files : [];
+        devTerminalLog([
+          `Editable files for ${result.projectName}:`,
+          '',
+          ...(files.length ? files.map(file => file.relativePath) : ['(none)'])
+        ].join('\n'));
+      } else {
+        devTerminalLog(`Files failed: ${getError(result)}`);
+      }
+
+      return;
+    }
+
+    if (cmd === 'edit-main' || cmd === 'open-main') {
+      await refreshDevEditableFiles('payload/main.js');
+      const result = await openDevCodeFile('payload/main.js');
+
+      devTerminalLog(
+        isOk(result) ? 'Opened in Code Editor:' : 'Open failed:',
+        isOk(result) ? result.relativePath : getError(result)
+      );
+
+      return;
+    }
+
+    if (cmd === 'edit-manifest' || cmd === 'open-manifest') {
+      await refreshDevEditableFiles('quartz.json');
+      const result = await openDevCodeFile('quartz.json');
+
+      devTerminalLog(
+        isOk(result) ? 'Opened in Code Editor:' : 'Open failed:',
+        isOk(result) ? result.relativePath : getError(result)
+      );
+
       return;
     }
 
@@ -1803,6 +2039,52 @@ function bindButtons() {
     if (out) out.textContent = 'Quartz Dev Terminal ready. Type help to see commands.';
     setStatus('Dev Terminal cleared.');
   });
+
+  $('#devCodeRefreshFilesBtn')?.addEventListener('click', async () => {
+    const result = await refreshDevEditableFiles(getDevSelectedCodeFile());
+
+    if (isOk(result)) {
+      setStatus('Code editor file list refreshed.');
+    } else {
+      setStatus(`Refresh files failed: ${getError(result)}`);
+    }
+  });
+
+  $('#devCodeOpenBtn')?.addEventListener('click', async () => {
+    await openDevCodeFile();
+  });
+
+  $('#devCodeFileSelect')?.addEventListener('change', async () => {
+    await openDevCodeFile();
+  });
+
+  $('#devCodeSaveBtn')?.addEventListener('click', async () => {
+    await saveDevCodeFile();
+  });
+
+  $('#devCodeEditor')?.addEventListener('keydown', event => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      saveDevCodeFile();
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+
+      const editor = event.target;
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+
+      editor.value = `${editor.value.slice(0, start)}  ${editor.value.slice(end)}`;
+      editor.selectionStart = editor.selectionEnd = start + 2;
+    }
+  });
+
+  $('#devProjectSelect')?.addEventListener('change', async () => {
+    await refreshDevEditableFiles();
+  });
+
+
 
   $('#devClearConsoleBtn')?.addEventListener('click', () => {
     const consoleEl = $('#devConsole');

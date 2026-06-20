@@ -199,6 +199,33 @@
           </div>
         </div>
 
+        <div class="quartz-dev-editor-card">
+          <div class="quartz-dev-console-header">
+            <h3>Code Editor</h3>
+            <div>
+              <button id="devCodeRefreshFilesBtn" class="small-btn">Refresh Files</button>
+              <button id="devCodeSaveBtn" class="small-btn">Save File</button>
+            </div>
+          </div>
+
+          <p class="quartz-dev-terminal-note">
+            Edit the selected project files directly inside Quartz. Start with payload/main.js.
+          </p>
+
+          <div class="quartz-dev-editor-controls">
+            <select id="devCodeFileSelect" class="quartz-dev-select">
+              <option value="">Select a project file...</option>
+            </select>
+            <button id="devCodeOpenBtn" class="small-btn">Open File</button>
+          </div>
+
+          <textarea id="devCodeEditor" class="quartz-dev-code-editor" spellcheck="false" placeholder="Open payload/main.js to start editing your mod code."></textarea>
+
+          <div id="devCodeEditorInfo" class="quartz-dev-code-info">
+            No file open yet.
+          </div>
+        </div>
+
         <div class="quartz-dev-console-card">
           <div class="quartz-dev-console-header">
             <h3>Dev Console</h3>
