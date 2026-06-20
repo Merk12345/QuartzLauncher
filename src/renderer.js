@@ -1626,14 +1626,24 @@ function bindButtons() {
     }
   });
 
-  function devTerminalLog(message) {
+  function devTerminalLog(message, details = null) {
     const out = $('#devTerminalOutput');
     if (!out) return;
 
+    let finalMessage = String(message || '');
+
+    if (details !== null && details !== undefined) {
+      if (typeof details === 'string') {
+        finalMessage += `\n${details}`;
+      } else {
+        finalMessage += `\n${JSON.stringify(details, null, 2)}`;
+      }
+    }
+
     const current = out.textContent || '';
     const text = current && current !== 'Quartz Dev Terminal ready. Type help to see commands.'
-      ? `${current}\n\n${message}`
-      : message;
+      ? `${current}\n\n${finalMessage}`
+      : finalMessage;
 
     out.textContent = text;
     out.scrollTop = out.scrollHeight;
@@ -1668,26 +1678,74 @@ function bindButtons() {
     }
 
     if (cmd === 'build') {
-      $('#devBuildPackageBtn')?.click();
-      devTerminalLog('Running build through Dev Tools...');
+      const projectName = getSelectedDevProject();
+      devTerminalLog(`Building selected project${projectName ? `: ${projectName}` : ''}...`);
+
+      const result = await window.quartzAPI.devBuildQuartzPackage(projectName);
+      rememberDevPackagePath(result);
+
+      devTerminalLog(
+        isOk(result) ? 'Build finished:' : 'Build finished with issues:',
+        summarizeDevResult(result)
+      );
+
+      if (!isOk(result)) setStatus(`Build issue: ${getError(result, 'Validation found issues')}`);
+      else setStatus('Package built successfully.');
+
       return;
     }
 
     if (cmd === 'validate') {
-      $('#devValidatePackageBtn')?.click();
-      devTerminalLog('Running validation through Dev Tools...');
+      const projectName = getSelectedDevProject();
+      devTerminalLog(`Validating selected project${projectName ? `: ${projectName}` : ''}...`);
+
+      const result = await window.quartzAPI.devValidateQuartzPackage(projectName);
+      rememberDevPackagePath(result);
+
+      devTerminalLog(
+        isOk(result) ? 'Validation passed:' : 'Validation found issues:',
+        summarizeDevResult(result)
+      );
+
+      if (!isOk(result)) setStatus(`Validation issue: ${getError(result, 'Validation found issues')}`);
+      else setStatus('Package passed validation.');
+
       return;
     }
 
     if (cmd === 'test') {
-      $('#devImportLocalBtn')?.click();
-      devTerminalLog('Running test install through Dev Tools...');
+      const projectName = getSelectedDevProject();
+      devTerminalLog(`Test installing selected project${projectName ? `: ${projectName}` : ''}...`);
+
+      const result = await window.quartzAPI.devTestInstallLatestPackage(projectName);
+      rememberDevPackagePath(result);
+
+      devTerminalLog(
+        isOk(result) ? 'Test install finished:' : 'Test install failed:',
+        summarizeDevResult(result)
+      );
+
+      if (!isOk(result)) setStatus(`Test install failed: ${getError(result)}`);
+      else setStatus('Selected project build test installed.');
+
+      loadInstalledMods(true);
       return;
     }
 
     if (cmd === 'open') {
-      $('#devOpenProjectBtn')?.click();
-      devTerminalLog('Opening selected project through Dev Tools...');
+      const projectName = getSelectedDevProject();
+      devTerminalLog(`Opening selected project${projectName ? `: ${projectName}` : ''}...`);
+
+      const result = await window.quartzAPI.devOpenProjectFolder(projectName);
+
+      devTerminalLog(
+        isOk(result) ? 'Project folder opened:' : 'Project folder failed:',
+        summarizeDevResult(result)
+      );
+
+      if (!isOk(result)) setStatus(`Open project failed: ${getError(result)}`);
+      else setStatus('Project folder opened.');
+
       return;
     }
 
