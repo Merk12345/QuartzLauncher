@@ -1,977 +1,5 @@
 [
   {
-    "id": "teamtcm.geometry-dash-odyssey",
-    "name": "Geometry Dash: Odyssey",
-    "developer": "chumiu",
-    "version": "1.1.2",
-    "description": "A fanmade spin-off!",
-    "engine": "geode-compat",
-    "category": "universal",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "universal",
-      "gameplay",
-      "online",
-      "interface",
-      "content"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 397778,
-    "geodeVersion": "5.6.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.1.2",
-    "geodeModId": "teamtcm.geometry-dash-odyssey",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/teamtcm.geometry-dash-odyssey/versions/1.1.2/download",
-    "geodeHash": "90705b564fe46cc78f456ce71728a906948f8650583b9f8789273c21dee6b725",
-    "links": {
-      "community": "https://discord.gg/PNPrR4DEbw",
-      "homepage": null,
-      "source": null
-    },
-    "updatedAt": "2026-04-26T05:54:03Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "dankmeme.globed2",
-    "name": "Globed",
-    "developer": "dankmeme",
-    "version": "2.1.4",
-    "description": "Feature-rich multiplayer mod",
-    "engine": "geode-compat",
-    "category": "online",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "online"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 8163615,
-    "geodeVersion": "5.6.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.1.4",
-    "geodeModId": "dankmeme.globed2",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/dankmeme.globed2/versions/2.1.4/download",
-    "geodeHash": "a9029e4c85158ebbe6b54c61bd2e4f159ea88dc29be532dccd6288dc4d4e70da",
-    "links": {
-      "community": "https://discord.gg/d56q5Dkdm3",
-      "homepage": "https://globed.dev",
-      "source": "https://github.com/GlobedGD/globed2"
-    },
-    "updatedAt": "2026-04-17T20:47:26Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "firee.goldenbest",
-    "name": "Golden Best",
-    "developer": "Firee",
-    "version": "1.1.3",
-    "description": "A mod that changes the percentage to gold when you are achieving a new best!",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "offline",
-      "enhancement",
-      "utility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 2633671,
-    "geodeVersion": "5.0.0-beta.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.1.3",
-    "geodeModId": "firee.goldenbest",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/firee.goldenbest/versions/1.1.3/download",
-    "geodeHash": "65a7b62b7ad454557e8c3dd5012d6588860bbb0de381c7823269ab3140a8caeb",
-    "links": {},
-    "updatedAt": "2026-02-15T00:49:05Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "alphalaneous.happy_textures",
-    "name": "Happy Textures x3c",
-    "developer": "Alphalaneous",
-    "version": "2.1.11",
-    "description": "Texture Packs with more tools uwu mrrp :333",
-    "engine": "geode-compat",
-    "category": "universal",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "universal",
-      "offline",
-      "enhancement",
-      "interface",
-      "bugfix",
-      "utility",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 5570559,
-    "geodeVersion": "5.5.3",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.1.11",
-    "geodeModId": "alphalaneous.happy_textures",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.happy_textures/versions/2.1.11/download",
-    "geodeHash": "4dab164f893abb40a755ae88d42f8f9d8c8d2c1b7747a02342ec82363ca24a2e",
-    "links": {
-      "community": "https://discord.gg/Txn2CA5dHF",
-      "homepage": "https://linktr.ee/Alphalaneous",
-      "source": "https://github.com/Alphalaneous/HappyTextures"
-    },
-    "updatedAt": "2026-04-02T00:42:50Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "zilko.icon_gradients",
-    "name": "Icon Gradients",
-    "developer": "Zilko",
-    "version": "1.3.10",
-    "description": "Allows u to gradient ur icons.",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "offline",
-      "enhancement",
-      "interface",
-      "utility",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 708835,
-    "geodeVersion": "5.7.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.3.10",
-    "geodeModId": "zilko.icon_gradients",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/zilko.icon_gradients/versions/1.3.10/download",
-    "geodeHash": "b134f25e3161372c149019760fe92dc0c0861ca056ddb83315b97de558eae95e",
-    "links": {
-      "community": "https://discord.gg/w6yvdzVzBd",
-      "homepage": null,
-      "source": "https://github.com/ZiLko/icon-gradients"
-    },
-    "updatedAt": "2026-06-18T16:10:01Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "undefined0.icon_ninja",
-    "name": "Icon Ninja",
-    "developer": "undefined0",
-    "version": "1.4.6",
-    "description": "Makes killing icons like Fruit Ninja!",
-    "engine": "geode-compat",
-    "category": "offline",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "offline",
-      "joke",
-      "modtober24"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 868890,
-    "geodeVersion": "5.5.2",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.4.6",
-    "geodeModId": "undefined0.icon_ninja",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/undefined0.icon_ninja/versions/1.4.6/download",
-    "geodeHash": "822c8c986a8cea3fe8889e448fe6e2b5c2680416218e539774442c10c39f7cd5",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/undefined06855/Icon-Ninja"
-    },
-    "updatedAt": "2026-04-01T16:00:01Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "alphalaneous.improved_group_view",
-    "name": "Improved Group View",
-    "developer": "Alphalaneous",
-    "version": "1.0.17",
-    "description": "Allows more than 20 groups to show in the groups menu!",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor",
-      "enhancement"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 513859,
-    "geodeVersion": "4.10.0",
-    "gameVersion": {
-      "win": "2.2074",
-      "android32": "2.2074",
-      "android64": "2.2074",
-      "mac-intel": "2.2074",
-      "mac-arm": "2.2074",
-      "ios": "2.2074"
-    },
-    "modVersion": "1.0.17",
-    "geodeModId": "alphalaneous.improved_group_view",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.improved_group_view/versions/1.0.17/download",
-    "geodeHash": "62864de7669171a863e2546a4ba91618dad68a28d36a9b29b4c95b52c26bedeb",
-    "links": {
-      "community": "https://discord.gg/Txn2CA5dHF",
-      "homepage": "https://linktr.ee/Alphalaneous",
-      "source": "https://github.com/Alphalaneous/ImprovedGroupView"
-    },
-    "updatedAt": "2025-12-08T00:11:05Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "alphalaneous.improved_song_browser",
-    "name": "Improved Song Browser",
-    "developer": "Alphalaneous",
-    "version": "1.1.0",
-    "description": "Song Search and Filtering in the Song Browser!",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor",
-      "enhancement",
-      "music",
-      "interface",
-      "utility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 477595,
-    "geodeVersion": "5.0.0-beta.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.1.0",
-    "geodeModId": "alphalaneous.improved_song_browser",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.improved_song_browser/versions/1.1.0/download",
-    "geodeHash": "878494672cea4c19eb6d8c79402b7a4c51201e7468d89c9c4826cfd5e57abda9",
-    "links": {
-      "community": "https://discord.gg/Txn2CA5dHF",
-      "homepage": "https://linktr.ee/Alphalaneous",
-      "source": "https://github.com/Alphalaneous/Improved-Song-Browser"
-    },
-    "updatedAt": "2026-02-15T03:02:18Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "hiimjustin000.integrated_demonlist",
-    "name": "Integrated Demonlist",
-    "developer": "hiimjasmine00",
-    "version": "1.7.13",
-    "description": "Simple AREDL and Pemonlist integration.",
-    "engine": "geode-compat",
-    "category": "online",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "online",
-      "enhancement",
-      "interface",
-      "utility",
-      "content"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 2748575,
-    "geodeVersion": "5.0.0-beta.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.7.13",
-    "geodeModId": "hiimjustin000.integrated_demonlist",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/hiimjustin000.integrated_demonlist/versions/1.7.13/download",
-    "geodeHash": "3cdbb02ad3c2202e0ba9fc4b7e83e6495a79738630331be5a8fe7161f4a79ba1",
-    "links": {
-      "community": "https://discord.gg/QVKmbvBXA7",
-      "homepage": "https://www.hiimjasmine00.com",
-      "source": "https://github.com/hiimjasmine00/IntegratedDemonlist"
-    },
-    "updatedAt": "2026-02-15T02:18:30Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "fleym.nongd",
-    "name": "Jukebox",
-    "developer": "Fleym, Flafy",
-    "version": "3.6.2",
-    "description": "A simple song manager for Geometry Dash",
-    "engine": "geode-compat",
-    "category": "online",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "online",
-      "music",
-      "interface",
-      "utility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 7237064,
-    "geodeVersion": "5.3.0",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "3.6.2",
-    "geodeModId": "fleym.nongd",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/fleym.nongd/versions/3.6.2/download",
-    "geodeHash": "a570747b1210990de44a13cae24abf18885d612242b7fc7b31d626d9bcf6c86f",
-    "links": {
-      "community": "https://discord.gg/maSgd4zpEF",
-      "homepage": null,
-      "source": "https://github.com/Fleeym/jukebox"
-    },
-    "updatedAt": "2026-04-05T16:00:56Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "delivel.level-grind",
-    "name": "Level Grind",
-    "developer": "delivel-tech",
-    "version": "1.5.6",
-    "description": "A big storage of levels for grinding!",
-    "engine": "geode-compat",
-    "category": "universal",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "universal",
-      "enhancement",
-      "interface",
-      "utility",
-      "content"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 139280,
-    "geodeVersion": "5.6.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.5.6",
-    "geodeModId": "delivel.level-grind",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/delivel.level-grind/versions/1.5.6/download",
-    "geodeHash": "e1596d586ad89e7ded68bce8aebe576b51eb65545dff055dbc5e7d9f4898dc2c",
-    "links": {
-      "community": "https://discord.gg/tmf5xtCX5y",
-      "homepage": "https://delivel.tech",
-      "source": "https://github.com/delivel-tech/Level-Grind"
-    },
-    "updatedAt": "2026-04-27T16:25:08Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "cdc.level_thumbnails",
-    "name": "Level Thumbnails",
-    "developer": "cdc, prevter",
-    "version": "2.3.0",
-    "description": "Adds thumbnails to levels in search.",
-    "engine": "geode-compat",
-    "category": "Geode",
-    "tags": [
-      "Geode",
-      "Geode Compatibility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 4511242,
-    "geodeVersion": "5.7.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.3.0",
-    "geodeModId": "cdc.level_thumbnails",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/cdc.level_thumbnails/versions/2.3.0/download",
-    "geodeHash": "41c5cde5e8b1509cc08f39322e43c9027fcf6a40e8e536e4d6d366a44dd2ca07",
-    "links": {
-      "community": "https://discord.gg/GuagJDsqds",
-      "homepage": null,
-      "source": "https://github.com/cdc-sys/level-thumbs-mod"
-    },
-    "updatedAt": "2026-05-15T12:07:41Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "cgytrus.menu-shaders",
-    "name": "Menu Shaders",
-    "developer": "ConfiG, mat, rooot",
-    "version": "1.4.5",
-    "description": "Replaces the background of the main menu with a customizable shader.",
-    "engine": "geode-compat",
-    "category": "offline",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "offline",
-      "interface",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 871998,
-    "geodeVersion": "5.4.0",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.4.5",
-    "geodeModId": "cgytrus.menu-shaders",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/cgytrus.menu-shaders/versions/1.4.5/download",
-    "geodeHash": "a05e0cf47d0d7ca0f2d329c327c94a94a99b6ed644ce5e9a6fd8ad0976b6d2da",
-    "links": {},
-    "updatedAt": "2026-03-22T14:00:04Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "hiimjustin000.more_icons",
-    "name": "More Icons",
-    "developer": "hiimjasmine00",
-    "version": "2.1.3",
-    "description": "Custom icons without the hassle.",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "offline",
-      "enhancement",
-      "interface",
-      "customization",
-      "content",
-      "modtober24"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 4699403,
-    "geodeVersion": "5.5.3",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.1.3",
-    "geodeModId": "hiimjustin000.more_icons",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/hiimjustin000.more_icons/versions/2.1.3/download",
-    "geodeHash": "5f67b54643000d08c5d4d80af9dfd2d3f606466155aa47fcd14dbf2b14d6e884",
-    "links": {
-      "community": "https://discord.gg/QVKmbvBXA7",
-      "homepage": "https://more-icons.hiimjasmine00.com",
-      "source": "https://github.com/hiimjasmine00/MoreIcons"
-    },
-    "updatedAt": "2026-04-02T17:07:28Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "ninkaz.editor_utils",
-    "name": "NinKaz's Editor Utils",
-    "developer": "NinKaz",
-    "version": "1.5.6",
-    "description": "Editor utilities to make my life easier",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor",
-      "offline",
-      "enhancement",
-      "interface",
-      "utility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 285911,
-    "geodeVersion": "5.6.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.5.6",
-    "geodeModId": "ninkaz.editor_utils",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/ninkaz.editor_utils/versions/1.5.6/download",
-    "geodeHash": "6f24213265235ad6a92cd73176562f416c24f3f24b94b75588342edc348966e8",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/flurrybun/ninkaz-editor-utils"
-    },
-    "updatedAt": "2026-05-03T02:21:48Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "razoom.object_groups",
-    "name": "Object Groups",
-    "developer": "RaZooM",
-    "version": "2.1.9",
-    "description": "A mod for grouping objects in the editor tabs",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor",
-      "enhancement",
-      "interface",
-      "utility",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 211356,
-    "geodeVersion": "5.6.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.1.9",
-    "geodeModId": "razoom.object_groups",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/razoom.object_groups/versions/2.1.9/download",
-    "geodeHash": "2739b2796d37f697ac8e982c4b6a282e3d88668852f961e97e618988317e63e8",
-    "links": {
-      "community": "https://discord.gg/wcWvtKHP8n",
-      "homepage": null,
-      "source": "https://github.com/RazoomGD/geode-object-groups"
-    },
-    "updatedAt": "2026-05-11T15:19:59Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "firee.object-workshop",
-    "name": "Object Workshop",
-    "developer": "Firee",
-    "version": "1.5.0-beta.2",
-    "description": "Download, upload, or find custom objects made by other creators!",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor",
-      "online",
-      "interface",
-      "utility",
-      "content"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 972679,
-    "geodeVersion": "5.4.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.5.0-beta.2",
-    "geodeModId": "firee.object-workshop",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/firee.object-workshop/versions/1.5.0-beta.2/download",
-    "geodeHash": "cb90b2f2ba47b13eeee0f2e72f33bb804dc93a07291eed9e254485318f5edd5c",
-    "links": {
-      "community": "https://discord.gg/XGBMVVvJ7J",
-      "homepage": null,
-      "source": "https://github.com/FireMario211/Object-Workshop"
-    },
-    "updatedAt": "2026-04-08T05:09:50Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "arcticwoof.rated_layouts",
-    "name": "Rated Layouts",
-    "developer": "ArcticWoof",
-    "version": "1.0.13",
-    "description": "Play layout rated levels",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "online",
-      "enhancement",
-      "interface",
-      "content"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 364718,
-    "geodeVersion": "5.6.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.0.13",
-    "geodeModId": "arcticwoof.rated_layouts",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/arcticwoof.rated_layouts/versions/1.0.13/download",
-    "geodeHash": "15a82965a8fd9495d469d8946b844a507f16e921443488b469aaecf82ad10999",
-    "links": {
-      "community": null,
-      "homepage": "https://ratedlayouts.arcticwoof.xyz/",
-      "source": "https://github.com/RatedLayouts/RatedLayouts"
-    },
-    "updatedAt": "2026-05-06T11:52:16Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "mat.run-info",
-    "name": "Run Info",
-    "developer": "mat",
-    "version": "2.1.2",
-    "description": "Shows info about current run",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "offline",
-      "utility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 1348715,
-    "geodeVersion": "5.0.0-beta.2",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.1.2",
-    "geodeModId": "mat.run-info",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/mat.run-info/versions/2.1.2/download",
-    "geodeHash": "e9293c0bcb44d221fe09232a9d2111e6d33f703b55f1534457524e23874edb75",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/matcool/geode-mods"
-    },
-    "updatedAt": "2026-02-15T20:44:06Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "weebify.separate_dual_icons",
-    "name": "Separate Dual Icons",
-    "developer": "Weebify",
-    "version": "1.4.1",
-    "description": "Allows you to customize your 2nd player",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "interface",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 1843982,
-    "geodeVersion": "5.3.0",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.4.1",
-    "geodeModId": "weebify.separate_dual_icons",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/weebify.separate_dual_icons/versions/1.4.1/download",
-    "geodeHash": "e90e46cd90b048771ce253ea349a3431ec2b0a56ea6655b2612b1b3f8798c2a3",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/Weebifying/separate-dual-icons-geode"
-    },
-    "updatedAt": "2026-03-04T10:21:59Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "capeling.soggy-mod",
-    "name": "Soggy Mod",
-    "developer": "capeling",
-    "version": "1.1.8",
-    "description": "Sog your game with the Soggy Mod!",
-    "engine": "geode-compat",
-    "category": "joke",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "joke"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 769817,
-    "geodeVersion": "5.0.0",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.1.8",
-    "geodeModId": "capeling.soggy-mod",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/capeling.soggy-mod/versions/1.1.8/download",
-    "geodeHash": "aec5899f3719a44d89bd363d6bce9ae308072775239dc70738019271d7865f86",
-    "links": {},
-    "updatedAt": "2026-02-23T23:14:37Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "geode.texture-loader",
-    "name": "Texture Loader",
-    "developer": "Geode Team, cvolton, mat, ninXout, Fleym, qimiko, dankmeme, HJfod",
-    "version": "1.10.2",
-    "description": "Texture Pack Manager",
-    "engine": "geode-compat",
-    "category": "Geode",
-    "tags": [
-      "Geode",
-      "Geode Compatibility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 4785646,
-    "geodeVersion": "5.6.0",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.10.2",
-    "geodeModId": "geode.texture-loader",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/geode.texture-loader/versions/1.10.2/download",
-    "geodeHash": "57e5dc69ddcde840edb824c702b556cad962808220263a20f030d9e1bb26ba8b",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/geode-sdk/textureldr"
-    },
-    "updatedAt": "2026-04-13T01:19:54Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "uproxide.textures",
-    "name": "Texture Workshop",
-    "developer": "Naomi",
-    "version": "2.1.1",
-    "description": "An index for Texture Packs :)",
-    "engine": "geode-compat",
-    "category": "universal",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "universal",
-      "enhancement",
-      "interface",
-      "utility",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 2816413,
-    "geodeVersion": "5.7.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "2.1.1",
-    "geodeModId": "uproxide.textures",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/uproxide.textures/versions/2.1.1/download",
-    "geodeHash": "85d03604933d8f6ced7c98e5515702b56a735b9becebcd702fb9782a7d2b3e14",
-    "links": {
-      "community": "https://discord.gg/uproxide-s-little-land-1204580412299542608",
-      "homepage": null,
-      "source": "https://github.com/Uproxide/Texture-Workshop"
-    },
-    "updatedAt": "2026-06-18T16:52:44Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
-    "id": "alphalaneous.tinker",
-    "name": "Tinker",
-    "developer": "Alphalaneous",
-    "version": "1.0.17",
-    "description": "Editor Revamped",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor",
-      "offline",
-      "enhancement",
-      "interface",
-      "bugfix",
-      "utility",
-      "customization"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 233005,
-    "geodeVersion": "5.7.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.0.17",
-    "geodeModId": "alphalaneous.tinker",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.tinker/versions/1.0.17/download",
-    "geodeHash": "e6e8230fb0a247e4c362fce78f7d5279e76155c6cac50cd8444efbd6243f653a",
-    "links": {
-      "community": "https://discord.gg/Txn2CA5dHF",
-      "homepage": "https://linktr.ee/Alphalaneous",
-      "source": "https://github.com/Alphalaneous/Tinker"
-    },
-    "updatedAt": "2026-05-29T00:40:01Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
     "id": "undefined0.icon-kit",
     "name": "\"\"Icon\"\" Kit",
     "developer": "undefined0",
@@ -16071,6 +15099,47 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "teamtcm.geometry-dash-odyssey",
+    "name": "Geometry Dash: Odyssey",
+    "developer": "chumiu",
+    "version": "1.1.2",
+    "description": "A fanmade spin-off!",
+    "engine": "geode-compat",
+    "category": "universal",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "universal",
+      "gameplay",
+      "online",
+      "interface",
+      "content"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 397778,
+    "geodeVersion": "5.6.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.1.2",
+    "geodeModId": "teamtcm.geometry-dash-odyssey",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/teamtcm.geometry-dash-odyssey/versions/1.1.2/download",
+    "geodeHash": "90705b564fe46cc78f456ce71728a906948f8650583b9f8789273c21dee6b725",
+    "links": {
+      "community": "https://discord.gg/PNPrR4DEbw",
+      "homepage": null,
+      "source": null
+    },
+    "updatedAt": "2026-04-26T05:54:03Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "chumiiu.geometry_dash_time_reborn",
     "name": "Geometry Dash: Time Reborn",
     "developer": "chumiu",
@@ -16386,6 +15455,43 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "dankmeme.globed2",
+    "name": "Globed",
+    "developer": "dankmeme",
+    "version": "2.1.4",
+    "description": "Feature-rich multiplayer mod",
+    "engine": "geode-compat",
+    "category": "online",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "online"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 8163615,
+    "geodeVersion": "5.6.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.1.4",
+    "geodeModId": "dankmeme.globed2",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/dankmeme.globed2/versions/2.1.4/download",
+    "geodeHash": "a9029e4c85158ebbe6b54c61bd2e4f159ea88dc29be532dccd6288dc4d4e70da",
+    "links": {
+      "community": "https://discord.gg/d56q5Dkdm3",
+      "homepage": "https://globed.dev",
+      "source": "https://github.com/GlobedGD/globed2"
+    },
+    "updatedAt": "2026-04-17T20:47:26Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "hjfod.gmd-api",
     "name": "GMD API",
     "developer": "HJfod",
@@ -16537,6 +15643,42 @@
       "source": "https://github.com/GDColon/Gold-User-Coins"
     },
     "updatedAt": "2026-02-23T21:41:37Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "firee.goldenbest",
+    "name": "Golden Best",
+    "developer": "Firee",
+    "version": "1.1.3",
+    "description": "A mod that changes the percentage to gold when you are achieving a new best!",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "offline",
+      "enhancement",
+      "utility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 2633671,
+    "geodeVersion": "5.0.0-beta.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.1.3",
+    "geodeModId": "firee.goldenbest",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/firee.goldenbest/versions/1.1.3/download",
+    "geodeHash": "65a7b62b7ad454557e8c3dd5012d6588860bbb0de381c7823269ab3140a8caeb",
+    "links": {},
+    "updatedAt": "2026-02-15T00:49:05Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -17045,6 +16187,49 @@
       "source": null
     },
     "updatedAt": "2026-04-19T00:02:48Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "alphalaneous.happy_textures",
+    "name": "Happy Textures x3c",
+    "developer": "Alphalaneous",
+    "version": "2.1.11",
+    "description": "Texture Packs with more tools uwu mrrp :333",
+    "engine": "geode-compat",
+    "category": "universal",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "universal",
+      "offline",
+      "enhancement",
+      "interface",
+      "bugfix",
+      "utility",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 5570559,
+    "geodeVersion": "5.5.3",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.1.11",
+    "geodeModId": "alphalaneous.happy_textures",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.happy_textures/versions/2.1.11/download",
+    "geodeHash": "4dab164f893abb40a755ae88d42f8f9d8c8d2c1b7747a02342ec82363ca24a2e",
+    "links": {
+      "community": "https://discord.gg/Txn2CA5dHF",
+      "homepage": "https://linktr.ee/Alphalaneous",
+      "source": "https://github.com/Alphalaneous/HappyTextures"
+    },
+    "updatedAt": "2026-04-02T00:42:50Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -18160,6 +17345,48 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "zilko.icon_gradients",
+    "name": "Icon Gradients",
+    "developer": "Zilko",
+    "version": "1.3.10",
+    "description": "Allows u to gradient ur icons.",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "offline",
+      "enhancement",
+      "interface",
+      "utility",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 708835,
+    "geodeVersion": "5.7.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.3.10",
+    "geodeModId": "zilko.icon_gradients",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/zilko.icon_gradients/versions/1.3.10/download",
+    "geodeHash": "b134f25e3161372c149019760fe92dc0c0861ca056ddb83315b97de558eae95e",
+    "links": {
+      "community": "https://discord.gg/w6yvdzVzBd",
+      "homepage": null,
+      "source": "https://github.com/ZiLko/icon-gradients"
+    },
+    "updatedAt": "2026-06-18T16:10:01Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "halved.iconhackhelper",
     "name": "Icon Hack Helper",
     "developer": "Halved",
@@ -18270,6 +17497,45 @@
       "source": "https://github.com/nytelytee/geode-icon-kit-utilities.git"
     },
     "updatedAt": "2026-04-07T01:30:15Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "undefined0.icon_ninja",
+    "name": "Icon Ninja",
+    "developer": "undefined0",
+    "version": "1.4.6",
+    "description": "Makes killing icons like Fruit Ninja!",
+    "engine": "geode-compat",
+    "category": "offline",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "offline",
+      "joke",
+      "modtober24"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 868890,
+    "geodeVersion": "5.5.2",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.4.6",
+    "geodeModId": "undefined0.icon_ninja",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/undefined0.icon_ninja/versions/1.4.6/download",
+    "geodeHash": "822c8c986a8cea3fe8889e448fe6e2b5c2680416218e539774442c10c39f7cd5",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/undefined06855/Icon-Ninja"
+    },
+    "updatedAt": "2026-04-01T16:00:01Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -18879,6 +18145,44 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "alphalaneous.improved_group_view",
+    "name": "Improved Group View",
+    "developer": "Alphalaneous",
+    "version": "1.0.17",
+    "description": "Allows more than 20 groups to show in the groups menu!",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor",
+      "enhancement"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 513859,
+    "geodeVersion": "4.10.0",
+    "gameVersion": {
+      "win": "2.2074",
+      "android32": "2.2074",
+      "android64": "2.2074",
+      "mac-intel": "2.2074",
+      "mac-arm": "2.2074",
+      "ios": "2.2074"
+    },
+    "modVersion": "1.0.17",
+    "geodeModId": "alphalaneous.improved_group_view",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.improved_group_view/versions/1.0.17/download",
+    "geodeHash": "62864de7669171a863e2546a4ba91618dad68a28d36a9b29b4c95b52c26bedeb",
+    "links": {
+      "community": "https://discord.gg/Txn2CA5dHF",
+      "homepage": "https://linktr.ee/Alphalaneous",
+      "source": "https://github.com/Alphalaneous/ImprovedGroupView"
+    },
+    "updatedAt": "2025-12-08T00:11:05Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "alphalaneous.improvedlink",
     "name": "Improved Link Controls",
     "developer": "Alphalaneous",
@@ -18996,6 +18300,47 @@
       "source": "https://github.com/RazoomGD/geode-improved-playtest"
     },
     "updatedAt": "2026-02-22T07:28:57Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "alphalaneous.improved_song_browser",
+    "name": "Improved Song Browser",
+    "developer": "Alphalaneous",
+    "version": "1.1.0",
+    "description": "Song Search and Filtering in the Song Browser!",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor",
+      "enhancement",
+      "music",
+      "interface",
+      "utility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 477595,
+    "geodeVersion": "5.0.0-beta.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.1.0",
+    "geodeModId": "alphalaneous.improved_song_browser",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.improved_song_browser/versions/1.1.0/download",
+    "geodeHash": "878494672cea4c19eb6d8c79402b7a4c51201e7468d89c9c4826cfd5e57abda9",
+    "links": {
+      "community": "https://discord.gg/Txn2CA5dHF",
+      "homepage": "https://linktr.ee/Alphalaneous",
+      "source": "https://github.com/Alphalaneous/Improved-Song-Browser"
+    },
+    "updatedAt": "2026-02-15T03:02:18Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -19342,6 +18687,47 @@
       "source": "https://github.com/MuhXd/Brainrot-List-Ingame"
     },
     "updatedAt": "2025-08-06T21:52:06Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "hiimjustin000.integrated_demonlist",
+    "name": "Integrated Demonlist",
+    "developer": "hiimjasmine00",
+    "version": "1.7.13",
+    "description": "Simple AREDL and Pemonlist integration.",
+    "engine": "geode-compat",
+    "category": "online",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "online",
+      "enhancement",
+      "interface",
+      "utility",
+      "content"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 2748575,
+    "geodeVersion": "5.0.0-beta.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.7.13",
+    "geodeModId": "hiimjustin000.integrated_demonlist",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/hiimjustin000.integrated_demonlist/versions/1.7.13/download",
+    "geodeHash": "3cdbb02ad3c2202e0ba9fc4b7e83e6495a79738630331be5a8fe7161f4a79ba1",
+    "links": {
+      "community": "https://discord.gg/QVKmbvBXA7",
+      "homepage": "https://www.hiimjasmine00.com",
+      "source": "https://github.com/hiimjasmine00/IntegratedDemonlist"
+    },
+    "updatedAt": "2026-02-15T02:18:30Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -19699,6 +19085,46 @@
       "source": "https://github.com/gdsrwave/juggernaut-freeplay"
     },
     "updatedAt": "2025-09-17T03:13:24Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "fleym.nongd",
+    "name": "Jukebox",
+    "developer": "Fleym, Flafy",
+    "version": "3.6.2",
+    "description": "A simple song manager for Geometry Dash",
+    "engine": "geode-compat",
+    "category": "online",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "online",
+      "music",
+      "interface",
+      "utility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 7237064,
+    "geodeVersion": "5.3.0",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "3.6.2",
+    "geodeModId": "fleym.nongd",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/fleym.nongd/versions/3.6.2/download",
+    "geodeHash": "a570747b1210990de44a13cae24abf18885d612242b7fc7b31d626d9bcf6c86f",
+    "links": {
+      "community": "https://discord.gg/maSgd4zpEF",
+      "homepage": null,
+      "source": "https://github.com/Fleeym/jukebox"
+    },
+    "updatedAt": "2026-04-05T16:00:56Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -20672,6 +20098,47 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "delivel.level-grind",
+    "name": "Level Grind",
+    "developer": "delivel-tech",
+    "version": "1.5.6",
+    "description": "A big storage of levels for grinding!",
+    "engine": "geode-compat",
+    "category": "universal",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "universal",
+      "enhancement",
+      "interface",
+      "utility",
+      "content"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 139280,
+    "geodeVersion": "5.6.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.5.6",
+    "geodeModId": "delivel.level-grind",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/delivel.level-grind/versions/1.5.6/download",
+    "geodeHash": "e1596d586ad89e7ded68bce8aebe576b51eb65545dff055dbc5e7d9f4898dc2c",
+    "links": {
+      "community": "https://discord.gg/tmf5xtCX5y",
+      "homepage": "https://delivel.tech",
+      "source": "https://github.com/delivel-tech/Level-Grind"
+    },
+    "updatedAt": "2026-04-27T16:25:08Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "dogotrigger.level_history",
     "name": "Level History",
     "developer": "dogotrigger",
@@ -21286,6 +20753,42 @@
       "source": "https://github.com/KampWskiR/Level-Tags"
     },
     "updatedAt": "2026-04-25T21:21:12Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "cdc.level_thumbnails",
+    "name": "Level Thumbnails",
+    "developer": "cdc, prevter",
+    "version": "2.3.0",
+    "description": "Adds thumbnails to levels in search.",
+    "engine": "geode-compat",
+    "category": "Geode",
+    "tags": [
+      "Geode",
+      "Geode Compatibility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 4511242,
+    "geodeVersion": "5.7.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.3.0",
+    "geodeModId": "cdc.level_thumbnails",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/cdc.level_thumbnails/versions/2.3.0/download",
+    "geodeHash": "41c5cde5e8b1509cc08f39322e43c9027fcf6a40e8e536e4d6d366a44dd2ca07",
+    "links": {
+      "community": "https://discord.gg/GuagJDsqds",
+      "homepage": null,
+      "source": "https://github.com/cdc-sys/level-thumbs-mod"
+    },
+    "updatedAt": "2026-05-15T12:07:41Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -22409,6 +21912,41 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "cgytrus.menu-shaders",
+    "name": "Menu Shaders",
+    "developer": "ConfiG, mat, rooot",
+    "version": "1.4.5",
+    "description": "Replaces the background of the main menu with a customizable shader.",
+    "engine": "geode-compat",
+    "category": "offline",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "offline",
+      "interface",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 871998,
+    "geodeVersion": "5.4.0",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.4.5",
+    "geodeModId": "cgytrus.menu-shaders",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/cgytrus.menu-shaders/versions/1.4.5/download",
+    "geodeHash": "a05e0cf47d0d7ca0f2d329c327c94a94a99b6ed644ce5e9a6fd8ad0976b6d2da",
+    "links": {},
+    "updatedAt": "2026-03-22T14:00:04Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "jojo989.main_menu_bg_customizer",
     "name": "menuBG customizer",
     "developer": "jojo989",
@@ -23291,6 +22829,49 @@
       "source": "https://github.com/Naxrin/Garage-in-Editor"
     },
     "updatedAt": "2026-02-15T17:05:45Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "hiimjustin000.more_icons",
+    "name": "More Icons",
+    "developer": "hiimjasmine00",
+    "version": "2.1.3",
+    "description": "Custom icons without the hassle.",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "offline",
+      "enhancement",
+      "interface",
+      "customization",
+      "content",
+      "modtober24"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 4699403,
+    "geodeVersion": "5.5.3",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.1.3",
+    "geodeModId": "hiimjustin000.more_icons",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/hiimjustin000.more_icons/versions/2.1.3/download",
+    "geodeHash": "5f67b54643000d08c5d4d80af9dfd2d3f606466155aa47fcd14dbf2b14d6e884",
+    "links": {
+      "community": "https://discord.gg/QVKmbvBXA7",
+      "homepage": "https://more-icons.hiimjasmine00.com",
+      "source": "https://github.com/hiimjasmine00/MoreIcons"
+    },
+    "updatedAt": "2026-04-02T17:07:28Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -24276,6 +23857,47 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "ninkaz.editor_utils",
+    "name": "NinKaz's Editor Utils",
+    "developer": "NinKaz",
+    "version": "1.5.6",
+    "description": "Editor utilities to make my life easier",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor",
+      "offline",
+      "enhancement",
+      "interface",
+      "utility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 285911,
+    "geodeVersion": "5.6.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.5.6",
+    "geodeModId": "ninkaz.editor_utils",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/ninkaz.editor_utils/versions/1.5.6/download",
+    "geodeHash": "6f24213265235ad6a92cd73176562f416c24f3f24b94b75588342edc348966e8",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/flurrybun/ninkaz-editor-utils"
+    },
+    "updatedAt": "2026-05-03T02:21:48Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "hiimjasmine00.nlw_ids_integration",
     "name": "NLW and IDS Integration",
     "developer": "hiimjasmine00",
@@ -25174,6 +24796,47 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "razoom.object_groups",
+    "name": "Object Groups",
+    "developer": "RaZooM",
+    "version": "2.1.9",
+    "description": "A mod for grouping objects in the editor tabs",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor",
+      "enhancement",
+      "interface",
+      "utility",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 211356,
+    "geodeVersion": "5.6.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.1.9",
+    "geodeModId": "razoom.object_groups",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/razoom.object_groups/versions/2.1.9/download",
+    "geodeHash": "2739b2796d37f697ac8e982c4b6a282e3d88668852f961e97e618988317e63e8",
+    "links": {
+      "community": "https://discord.gg/wcWvtKHP8n",
+      "homepage": null,
+      "source": "https://github.com/RazoomGD/geode-object-groups"
+    },
+    "updatedAt": "2026-05-11T15:19:59Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "malikhw47.object-budget",
     "name": "object limit",
     "developer": "MalikHw47",
@@ -25366,6 +25029,47 @@
       "source": "https://github.com/Alphalaneous/Object-Summary"
     },
     "updatedAt": "2025-04-02T02:36:22Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "firee.object-workshop",
+    "name": "Object Workshop",
+    "developer": "Firee",
+    "version": "1.5.0-beta.2",
+    "description": "Download, upload, or find custom objects made by other creators!",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor",
+      "online",
+      "interface",
+      "utility",
+      "content"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 972679,
+    "geodeVersion": "5.4.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.5.0-beta.2",
+    "geodeModId": "firee.object-workshop",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/firee.object-workshop/versions/1.5.0-beta.2/download",
+    "geodeHash": "cb90b2f2ba47b13eeee0f2e72f33bb804dc93a07291eed9e254485318f5edd5c",
+    "links": {
+      "community": "https://discord.gg/XGBMVVvJ7J",
+      "homepage": null,
+      "source": "https://github.com/FireMario211/Object-Workshop"
+    },
+    "updatedAt": "2026-04-08T05:09:50Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -29072,6 +28776,47 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "arcticwoof.rated_layouts",
+    "name": "Rated Layouts",
+    "developer": "ArcticWoof",
+    "version": "1.0.13",
+    "description": "Play layout rated levels",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "online",
+      "enhancement",
+      "interface",
+      "content"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 364718,
+    "geodeVersion": "5.6.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.0.13",
+    "geodeModId": "arcticwoof.rated_layouts",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/arcticwoof.rated_layouts/versions/1.0.13/download",
+    "geodeHash": "15a82965a8fd9495d469d8946b844a507f16e921443488b469aaecf82ad10999",
+    "links": {
+      "community": null,
+      "homepage": "https://ratedlayouts.arcticwoof.xyz/",
+      "source": "https://github.com/RatedLayouts/RatedLayouts"
+    },
+    "updatedAt": "2026-05-06T11:52:16Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "polsk.ratinginfo",
     "name": "Rating Info",
     "developer": "polsk",
@@ -30302,6 +30047,45 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "mat.run-info",
+    "name": "Run Info",
+    "developer": "mat",
+    "version": "2.1.2",
+    "description": "Shows info about current run",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "offline",
+      "utility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 1348715,
+    "geodeVersion": "5.0.0-beta.2",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.1.2",
+    "geodeModId": "mat.run-info",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/mat.run-info/versions/2.1.2/download",
+    "geodeHash": "e9293c0bcb44d221fe09232a9d2111e6d33f703b55f1534457524e23874edb75",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/matcool/geode-mods"
+    },
+    "updatedAt": "2026-02-15T20:44:06Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "alphalaneous.safe_zones_for_ios",
     "name": "Safe Zones for iOS",
     "developer": "Alphalaneous",
@@ -31202,6 +30986,45 @@
       "source": "https://github.com/SorkoPiko/SendDB-Mod"
     },
     "updatedAt": "2026-02-28T01:41:15Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "weebify.separate_dual_icons",
+    "name": "Separate Dual Icons",
+    "developer": "Weebify",
+    "version": "1.4.1",
+    "description": "Allows you to customize your 2nd player",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "interface",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 1843982,
+    "geodeVersion": "5.3.0",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.4.1",
+    "geodeModId": "weebify.separate_dual_icons",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/weebify.separate_dual_icons/versions/1.4.1/download",
+    "geodeHash": "e90e46cd90b048771ce253ea349a3431ec2b0a56ea6655b2612b1b3f8798c2a3",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/Weebifying/separate-dual-icons-geode"
+    },
+    "updatedAt": "2026-03-04T10:21:59Z",
     "installMode": "download-and-wrap-geode"
   },
   {
@@ -32602,6 +32425,39 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "capeling.soggy-mod",
+    "name": "Soggy Mod",
+    "developer": "capeling",
+    "version": "1.1.8",
+    "description": "Sog your game with the Soggy Mod!",
+    "engine": "geode-compat",
+    "category": "joke",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "joke"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 769817,
+    "geodeVersion": "5.0.0",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.1.8",
+    "geodeModId": "capeling.soggy-mod",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/capeling.soggy-mod/versions/1.1.8/download",
+    "geodeHash": "aec5899f3719a44d89bd363d6bce9ae308072775239dc70738019271d7865f86",
+    "links": {},
+    "updatedAt": "2026-02-23T23:14:37Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "fracturefx.song-info-in-pause",
     "name": "Song Info in Pause",
     "developer": "FractureFX",
@@ -33978,6 +33834,83 @@
     "installMode": "download-and-wrap-geode"
   },
   {
+    "id": "geode.texture-loader",
+    "name": "Texture Loader",
+    "developer": "Geode Team, cvolton, mat, ninXout, Fleym, qimiko, dankmeme, HJfod",
+    "version": "1.10.2",
+    "description": "Texture Pack Manager",
+    "engine": "geode-compat",
+    "category": "Geode",
+    "tags": [
+      "Geode",
+      "Geode Compatibility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 4785646,
+    "geodeVersion": "5.6.0",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.10.2",
+    "geodeModId": "geode.texture-loader",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/geode.texture-loader/versions/1.10.2/download",
+    "geodeHash": "57e5dc69ddcde840edb824c702b556cad962808220263a20f030d9e1bb26ba8b",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/geode-sdk/textureldr"
+    },
+    "updatedAt": "2026-04-13T01:19:54Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "uproxide.textures",
+    "name": "Texture Workshop",
+    "developer": "Naomi",
+    "version": "2.1.1",
+    "description": "An index for Texture Packs :)",
+    "engine": "geode-compat",
+    "category": "universal",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "universal",
+      "enhancement",
+      "interface",
+      "utility",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 2816413,
+    "geodeVersion": "5.7.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "2.1.1",
+    "geodeModId": "uproxide.textures",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/uproxide.textures/versions/2.1.1/download",
+    "geodeHash": "85d03604933d8f6ced7c98e5515702b56a735b9becebcd702fb9782a7d2b3e14",
+    "links": {
+      "community": "https://discord.gg/uproxide-s-little-land-1204580412299542608",
+      "homepage": null,
+      "source": "https://github.com/Uproxide/Texture-Workshop"
+    },
+    "updatedAt": "2026-06-18T16:52:44Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
     "id": "raydeeux.textureplatformerbuttons",
     "name": "TexturePlatformerButtons",
     "developer": "Erymanthus",
@@ -34433,6 +34366,49 @@
       "source": "https://github.com/CubingXT/Time-to-Rage/"
     },
     "updatedAt": "2026-05-03T18:34:26Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "alphalaneous.tinker",
+    "name": "Tinker",
+    "developer": "Alphalaneous",
+    "version": "1.0.17",
+    "description": "Editor Revamped",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor",
+      "offline",
+      "enhancement",
+      "interface",
+      "bugfix",
+      "utility",
+      "customization"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 233005,
+    "geodeVersion": "5.7.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.0.17",
+    "geodeModId": "alphalaneous.tinker",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.tinker/versions/1.0.17/download",
+    "geodeHash": "e6e8230fb0a247e4c362fce78f7d5279e76155c6cac50cd8444efbd6243f653a",
+    "links": {
+      "community": "https://discord.gg/Txn2CA5dHF",
+      "homepage": "https://linktr.ee/Alphalaneous",
+      "source": "https://github.com/Alphalaneous/Tinker"
+    },
+    "updatedAt": "2026-05-29T00:40:01Z",
     "installMode": "download-and-wrap-geode"
   },
   {
