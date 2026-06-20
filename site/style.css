@@ -457,3 +457,29 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+.community-support {
+  text-align: center;
+}
+
+.community-links {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.community-btn {
+  min-width: 190px;
+}
+
+.secondary-community {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.secondary-community:hover {
+  background: rgba(255,255,255,0.14);
+}
