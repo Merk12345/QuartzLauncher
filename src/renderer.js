@@ -6,7 +6,9 @@ const state = {
   indexSearch: '',
   indexPage: 1,
   installedPage: 1,
-  pageSize: 12
+  pageSize: 12,
+  devProjects: [],
+  selectedDevProject: '' 
 };
 
 function $(selector) {
@@ -110,6 +112,68 @@ function showPage(pageId) {
   if (pageId === 'index') loadIndex();
   if (pageId === 'mods') loadInstalledMods(true);
   if (pageId === 'settings') updateSettings();
+  if (pageId === 'devtools') refreshDevProjects();
+}
+
+function getSelectedDevProject() {
+  return $('#devProjectSelect')?.value || state.selectedDevProject || '';
+}
+
+function formatDevProjectInfo(project) {
+  if (!project) return 'No project selected yet.';
+
+  return [
+    `Name: ${project.displayName || project.name}`,
+    `ID: ${project.id || 'unknown'}`,
+    `Version: ${project.version || 'unknown'}`,
+    `Engine: ${project.engine || 'unknown'}`,
+    `Author: ${project.author || 'unknown'}`,
+    `Folder: ${project.modDir}`
+  ].join('\n');
+}
+
+function renderDevProjects() {
+  const select = $('#devProjectSelect');
+  const info = $('#devProjectInfo');
+
+  if (!select) return;
+
+  const projects = state.devProjects || [];
+
+  if (!projects.length) {
+    select.innerHTML = '<option value="">No projects yet</option>';
+    if (info) info.textContent = 'No projects found. Click Create Starter Mod to make one.';
+    return;
+  }
+
+  const previous = state.selectedDevProject || select.value || projects[0].name;
+
+  select.innerHTML = projects.map(project => {
+    const label = `${project.displayName || project.name} (${project.id || project.name})`;
+    return `<option value="${esc(project.name)}">${esc(label)}</option>`;
+  }).join('');
+
+  const stillExists = projects.some(project => project.name === previous);
+  state.selectedDevProject = stillExists ? previous : projects[0].name;
+  select.value = state.selectedDevProject;
+
+  const selected = projects.find(project => project.name === state.selectedDevProject);
+  if (info) info.textContent = formatDevProjectInfo(selected);
+}
+
+async function refreshDevProjects() {
+  if (!window.quartzAPI?.devListProjects) return;
+
+  const result = await window.quartzAPI.devListProjects();
+
+  if (!isOk(result)) {
+    devLog('Could not refresh dev projects.', summarizeDevResult(result));
+    setStatus(`Dev projects failed: ${getError(result)}`);
+    return;
+  }
+
+  state.devProjects = result.projects || [];
+  renderDevProjects();
 }
 
 function addStyles() {
@@ -268,6 +332,53 @@ function addStyles() {
     .quartz-dev-card button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+
+    .quartz-dev-project-card {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-dev-project-card h3 {
+      margin: 0 0 8px;
+    }
+
+    .quartz-dev-project-card p {
+      margin: 0 0 12px;
+      opacity: 0.86;
+    }
+
+    .quartz-dev-project-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .quartz-dev-select {
+      min-width: 260px;
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: inherit;
+    }
+
+    .quartz-dev-project-info {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      opacity: 0.9;
     }
 
     .quartz-dev-console-card {
@@ -1029,13 +1140,22 @@ function bindButtons() {
     const result = await window.quartzAPI.devCreateTemplate();
     devLog(isOk(result) ? 'Starter mod created.' : 'Starter mod failed.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Create mod failed: ${getError(result)}`);
-    else setStatus('Starter mod created.');
+    else {
+      setStatus('Starter mod created.');
+      await refreshDevProjects();
+      if (result.modDir) {
+        const createdName = result.modDir.split('/').pop();
+        state.selectedDevProject = createdName;
+        renderDevProjects();
+      }
+    }
   });
 
   $('#devBuildPackageBtn')?.addEventListener('click', async () => {
     setStatus('Building .quartz package...');
     devLog('Building .quartz package...');
-    const result = await window.quartzAPI.devBuildQuartzPackage();
+    const projectName = getSelectedDevProject();
+    const result = await window.quartzAPI.devBuildQuartzPackage(projectName);
     devLog(isOk(result) ? 'Build finished.' : 'Build finished with issues.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Build issue: ${getError(result, 'Validation found issues')}`);
     else setStatus('Package built successfully.');
@@ -1044,20 +1164,47 @@ function bindButtons() {
   $('#devValidatePackageBtn')?.addEventListener('click', async () => {
     setStatus('Validating .quartz package...');
     devLog('Validating .quartz package...');
-    const result = await window.quartzAPI.devValidateQuartzPackage();
+    const projectName = getSelectedDevProject();
+    const result = await window.quartzAPI.devValidateQuartzPackage(projectName);
     devLog(isOk(result) ? 'Validation passed.' : 'Validation found issues.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Validation issue: ${getError(result, 'Validation found issues')}`);
     else setStatus('Package passed validation.');
   });
 
   $('#devImportLocalBtn')?.addEventListener('click', async () => {
-    setStatus('Test installing newest built package...');
-    devLog('Test installing newest built package...');
-    const result = await window.quartzAPI.devTestInstallLatestPackage();
+    setStatus('Test installing selected project build...');
+    devLog('Test installing selected project build...');
+    const projectName = getSelectedDevProject();
+    const result = await window.quartzAPI.devTestInstallLatestPackage(projectName);
     devLog(isOk(result) ? 'Test install finished.' : 'Test install failed.', summarizeDevResult(result));
     if (!isOk(result)) setStatus(`Test install failed: ${getError(result)}`);
-    else setStatus('Newest built package test installed.');
+    else setStatus('Selected project build test installed.');
     loadInstalledMods(true);
+  });
+
+  $('#devRefreshProjectsBtn')?.addEventListener('click', async () => {
+    setStatus('Refreshing dev projects...');
+    devLog('Refreshing dev projects...');
+    await refreshDevProjects();
+    setStatus('Dev projects refreshed.');
+  });
+
+  $('#devProjectSelect')?.addEventListener('change', () => {
+    state.selectedDevProject = getSelectedDevProject();
+    const selected = state.devProjects.find(project => project.name === state.selectedDevProject);
+    const info = $('#devProjectInfo');
+    if (info) info.textContent = formatDevProjectInfo(selected);
+    devLog(`Selected project: ${state.selectedDevProject || 'none'}`);
+  });
+
+  $('#devOpenProjectBtn')?.addEventListener('click', async () => {
+    const projectName = getSelectedDevProject();
+    setStatus('Opening selected project...');
+    devLog('Opening selected project...', projectName || 'No project selected');
+    const result = await window.quartzAPI.devOpenProjectFolder(projectName);
+    devLog(isOk(result) ? 'Project folder opened.' : 'Project folder failed.', summarizeDevResult(result));
+    if (!isOk(result)) setStatus(`Open project failed: ${getError(result)}`);
+    else setStatus('Project folder opened.');
   });
 
   $('#devClearConsoleBtn')?.addEventListener('click', () => {

@@ -115,6 +115,25 @@
           <p>Create, build, validate, and test Quartz mod packages.</p>
         </div>
 
+        <div class="quartz-dev-project-card">
+          <div>
+            <h3>Current Project</h3>
+            <p>Select which dev project you want to build, validate, and test install.</p>
+          </div>
+
+          <div class="quartz-dev-project-controls">
+            <select id="devProjectSelect" class="quartz-dev-select">
+              <option value="">Loading projects...</option>
+            </select>
+            <button id="devRefreshProjectsBtn" class="small-btn">Refresh</button>
+            <button id="devOpenProjectBtn" class="small-btn">Open Project</button>
+          </div>
+
+          <div id="devProjectInfo" class="quartz-dev-project-info">
+            No project selected yet.
+          </div>
+        </div>
+
         <div class="quartz-devtools-grid">
           <div class="quartz-dev-card">
             <h3>📁 Dev Workspace</h3>
@@ -130,20 +149,20 @@
 
           <div class="quartz-dev-card">
             <h3>📦 Build Package</h3>
-            <p>Build the newest mod in your dev workspace into a .quartz package.</p>
-            <button id="devBuildPackageBtn" class="secondary-btn">Build Newest .quartz</button>
+            <p>Build the selected dev workspace project into a .quartz package.</p>
+            <button id="devBuildPackageBtn" class="secondary-btn">Build Selected .quartz</button>
           </div>
 
           <div class="quartz-dev-card">
             <h3>✅ Validate Package</h3>
-            <p>Validate the newest .quartz package from your dev workspace builds folder.</p>
-            <button id="devValidatePackageBtn" class="secondary-btn">Validate Newest .quartz</button>
+            <p>Validate the latest build for the selected project.</p>
+            <button id="devValidatePackageBtn" class="secondary-btn">Validate Selected .quartz</button>
           </div>
 
           <div class="quartz-dev-card">
             <h3>🧪 Test Install</h3>
-            <p>Test install the newest built .quartz package into Quartz.</p>
-            <button id="devImportLocalBtn" class="secondary-btn">Test Install Newest</button>
+            <p>Test install the latest build for the selected project.</p>
+            <button id="devImportLocalBtn" class="secondary-btn">Test Install Selected</button>
           </div>
 
           <div class="quartz-dev-card">

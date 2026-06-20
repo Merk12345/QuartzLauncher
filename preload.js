@@ -27,9 +27,11 @@ contextBridge.exposeInMainWorld('quartzAPI', {
 
   devOpenWorkspaceFolder: () => ipcRenderer.invoke('dev-open-workspace-folder'),
   devCreateTemplate: () => ipcRenderer.invoke('dev-create-template'),
-  devBuildQuartzPackage: () => ipcRenderer.invoke('dev-build-quartz-package'),
-  devValidateQuartzPackage: () => ipcRenderer.invoke('dev-validate-quartz-package'),
-  devTestInstallLatestPackage: () => ipcRenderer.invoke('dev-test-install-latest-package'),
+  devListProjects: () => ipcRenderer.invoke('dev-list-projects'),
+  devOpenProjectFolder: (projectName) => ipcRenderer.invoke('dev-open-project-folder', projectName),
+  devBuildQuartzPackage: (projectName) => ipcRenderer.invoke('dev-build-quartz-package', projectName),
+  devValidateQuartzPackage: (projectName) => ipcRenderer.invoke('dev-validate-quartz-package', projectName),
+  devTestInstallLatestPackage: (projectName) => ipcRenderer.invoke('dev-test-install-latest-package', projectName),
 
   openModsFolder: () => ipcRenderer.invoke('open-mods-folder'),
 
