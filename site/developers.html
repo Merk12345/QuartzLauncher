@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quartz Developer Center</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero docs-hero">
+    <nav class="nav">
+      <div class="brand">
+        <img src="assets/quartzlogo.png" alt="Quartz Logo" onerror="this.style.display='none'" />
+        <span>Quartz Launcher</span>
+      </div>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#native">Quartz Native</a>
+        <a href="developers.html">Developer Center</a>
+        <a href="index.html#download">Download</a>
+      </div>
+    </nav>
+
+    <section class="hero-content">
+      <p class="eyebrow">Developer Center</p>
+      <h1>Build for Quartz</h1>
+      <p class="subtitle">
+        Learn how Quartz mods should be packaged, tested, reviewed, and prepared for submission.
+      </p>
+
+      <div class="buttons">
+        <a class="btn primary" href="#getting-started">Get Started</a>
+        <a class="btn secondary" href="#declined">Why Mods Get Declined</a>
+      </div>
+    </section>
+  </header>
+
+  <main class="docs-page">
+    <section id="getting-started" class="section">
+      <p class="eyebrow">Start Here</p>
+      <h2>Getting Started</h2>
+      <p>
+        Quartz is being built around its own package system. A Quartz mod should be easy for the launcher
+        to read, validate, install, test, and eventually submit for review.
+      </p>
+
+      <div class="doc-grid">
+        <div class="doc-card">
+          <h3>1. Create your mod folder</h3>
+          <p>Keep your files organized so Quartz can understand what belongs to the package.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>2. Add a manifest</h3>
+          <p>The manifest tells Quartz the mod name, ID, version, author, engine, entry file, and package info.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>3. Add your payload files</h3>
+          <p>Your payload contains the actual files your mod needs to run.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>4. Validate before sharing</h3>
+          <p>Before submitting, the package should install correctly and avoid missing files or broken metadata.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="rules" class="section doc-section">
+      <p class="eyebrow">Submission Rules</p>
+      <h2>Mod Submission Rules</h2>
+      <div class="doc-panel">
+        <ul class="doc-list">
+          <li>Mods must be packaged correctly and include the required files.</li>
+          <li>Mods must have a clear name, ID, version, author, and description.</li>
+          <li>Mods must not include malware, token grabbers, suspicious files, or unsafe behavior.</li>
+          <li>Mods must not steal code, assets, icons, or work from other creators.</li>
+          <li>Mods should be reasonably stable and ready for testing or public use.</li>
+          <li>Mods should not be spam, duplicated packages, or intentionally misleading.</li>
+          <li>Mods must follow Quartz community rules and submission rules.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="format" class="section doc-section">
+      <p class="eyebrow">Package Format</p>
+      <h2>Quartz Package Format</h2>
+      <p>
+        Quartz packages use a manifest-based format so the launcher can read important information before
+        installing or testing the mod.
+      </p>
+
+      <div class="code-card">
+<pre><code>{
+  "format": "quartz.package",
+  "id": "creator.mod-name",
+  "name": "Example Mod",
+  "version": "1.0.0",
+  "author": "CreatorName",
+  "engine": "quartz-native",
+  "entry": "payload/main.js",
+  "description": "Short description of what the mod does."
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="package" class="section doc-section">
+      <p class="eyebrow">Packaging</p>
+      <h2>How to Package a Mod</h2>
+      <div class="doc-panel">
+        <ol class="doc-list">
+          <li>Create a clean folder for your mod.</li>
+          <li>Add your manifest file.</li>
+          <li>Add your payload folder and required mod files.</li>
+          <li>Include any icons, assets, or extra files your mod needs.</li>
+          <li>Build or export the package into the Quartz package format.</li>
+          <li>Test the package locally before submitting it.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="review" class="section doc-section">
+      <p class="eyebrow">Review Process</p>
+      <h2>How Mod Review Works</h2>
+      <p>
+        Mod review is meant to keep Quartz safe, clean, and useful. Reviews may check if the package installs,
+        if the manifest is valid, if required files exist, and if the mod follows the submission rules.
+      </p>
+
+      <div class="doc-grid">
+        <div class="doc-card">
+          <h3>Install Check</h3>
+          <p>The package should install without missing files or broken paths.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>Manifest Check</h3>
+          <p>The package should include valid metadata so Quartz can read it correctly.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>Safety Check</h3>
+          <p>The package should not include harmful files, suspicious behavior, or unsafe code.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>Quality Check</h3>
+          <p>The mod should be clear, useful, credited properly, and not spam or duplicate content.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="declined" class="section doc-section">
+      <p class="eyebrow">Declined Mods</p>
+      <h2>Why Mods Get Declined</h2>
+
+      <div class="doc-panel">
+        <h3>Common reasons a mod may be declined</h3>
+        <ul class="doc-list">
+          <li>The package is broken or cannot install correctly.</li>
+          <li>The manifest is missing, invalid, or has unclear information.</li>
+          <li>Required files are missing from the package.</li>
+          <li>The mod crashes Quartz or Geometry Dash during testing.</li>
+          <li>The mod includes unsafe code, suspicious behavior, or harmful files.</li>
+          <li>The mod uses stolen work, stolen assets, or does not credit required creators.</li>
+          <li>The description is misleading, empty, or does not explain what the mod does.</li>
+          <li>The mod is spam, duplicated, low-effort, or not ready for public release.</li>
+          <li>The mod breaks Quartz community rules or submission rules.</li>
+        </ul>
+
+        <p>
+          A decline does not always mean the mod is banned forever. Most of the time it just means something
+          needs to be fixed before the mod is ready. Developers can fix the issue and resubmit when ready.
+        </p>
+      </div>
+    </section>
+
+    <section id="tools" class="section doc-section">
+      <p class="eyebrow">Developer Tools</p>
+      <h2>Future Dev Tools</h2>
+      <p>
+        Quartz dev tools are planned to make mod creation easier for new developers and cleaner for experienced ones.
+      </p>
+
+      <div class="doc-grid">
+        <div class="doc-card">
+          <h3>Create New Mod</h3>
+          <p>Start a new Quartz-native mod from a beginner-friendly template.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>Validate Package</h3>
+          <p>Check a package for missing files, invalid manifest data, and common mistakes.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>Test Install</h3>
+          <p>Install a local package into Quartz so creators can test before sharing.</p>
+        </div>
+
+        <div class="doc-card">
+          <h3>Export Logs</h3>
+          <p>Export useful logs when something breaks so bugs are easier to fix.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Quartz Launcher is an independent mod launcher project.</p>
+  </footer>
+</body>
+</html>

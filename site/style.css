@@ -375,3 +375,85 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+.docs-hero {
+  min-height: 58vh;
+}
+
+.docs-page .section {
+  padding-top: 56px;
+  padding-bottom: 56px;
+}
+
+.doc-section {
+  border-top: 1px solid var(--line);
+}
+
+.download-dev-cta {
+  max-width: 720px;
+  margin: 34px auto 0;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--panel-strong);
+}
+
+.download-dev-cta h3 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+
+.download-dev-cta p {
+  margin: 0 auto 18px;
+  max-width: 620px;
+  font-size: 16px;
+}
+
+.doc-grid {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.doc-card,
+.doc-panel {
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--panel);
+  padding: 24px;
+}
+
+.doc-card h3,
+.doc-panel h3 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+.doc-card p,
+.doc-panel p {
+  font-size: 15px;
+}
+
+.doc-panel {
+  margin-top: 18px;
+  background: var(--panel-strong);
+}
+
+.doc-list {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-left: 22px;
+}
+
+.doc-list li {
+  margin: 6px 0;
+}
+
+@media (max-width: 850px) {
+  .doc-grid {
+    grid-template-columns: 1fr;
+  }
+}
