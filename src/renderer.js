@@ -194,6 +194,33 @@ function addStyles() {
     .quartz-danger {
       border-color: rgba(255,100,100,0.4) !important;
     }
+
+    .quartz-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quartz-link-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .support-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.12);
+      color: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .support-btn:hover {
+      background: rgba(255,255,255,0.18);
+    }
   `;
 
   document.head.appendChild(style);
@@ -844,8 +871,26 @@ function bindButtons() {
   $('#browseModsBtn')?.addEventListener('click', () => showPage('index'));
   $('#openModsFolderBtn')?.addEventListener('click', openQuartzModsFolder);
 
-  $('#discordBtn')?.addEventListener('click', () => setStatus('Discord link is not set yet.'));
-  $('#websiteBtn')?.addEventListener('click', () => setStatus('Website link is not set yet.'));
+  $('#supportBtn')?.addEventListener('click', async () => {
+    setStatus('Opening Ko-fi...');
+    const result = await window.quartzAPI.openLink('https://ko-fi.com/merk12345');
+    if (!isOk(result)) setStatus(`Ko-fi failed: ${getError(result)}`);
+    else setStatus('Ko-fi opened in your browser.');
+  });
+
+  $('#discordBtn')?.addEventListener('click', async () => {
+    setStatus('Opening Discord...');
+    const result = await window.quartzAPI.openLink('https://discord.gg/EfQXNFgQF');
+    if (!isOk(result)) setStatus(`Discord failed: ${getError(result)}`);
+    else setStatus('Discord opened in your browser.');
+  });
+
+  $('#websiteBtn')?.addEventListener('click', async () => {
+    setStatus('Opening website...');
+    const result = await window.quartzAPI.openLink('https://quartz-launcher.pages.dev');
+    if (!isOk(result)) setStatus(`Website failed: ${getError(result)}`);
+    else setStatus('Website opened in your browser.');
+  });
 
   $('#installISLBtn')?.addEventListener('click', async () => {
     if (!window.quartzAPI?.installISL) return alert('Compatibility install is not connected.');
