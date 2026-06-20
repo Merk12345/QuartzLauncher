@@ -293,7 +293,6 @@ function createModCard(mod, mode) {
       <span class="quartz-pill">${mode === 'installed' ? (enabled ? 'Enabled' : 'Disabled') : 'Available'}</span>
     </div>
     <p>${esc(description)}</p>
-    <p><strong>ID:</strong> ${esc(id)}</p>
     <p><strong>Developer:</strong> ${esc(developer)}</p>
     <div class="quartz-actions">
       ${actionHtml}
@@ -428,7 +427,7 @@ async function loadIndex() {
 
   try {
     const [indexResult, installedResult] = await Promise.all([
-      window.quartzAPI.getQuartzIndex({ search: state.indexSearch }),
+      window.quartzAPI.getQuartzIndex({ page: 1, pageSize: 5000, category: 'All' }),
       window.quartzAPI.getInstalledMods ? window.quartzAPI.getInstalledMods() : Promise.resolve({ mods: [] })
     ]);
 

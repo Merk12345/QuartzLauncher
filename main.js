@@ -1520,26 +1520,138 @@ try {
 try {
 } catch {}
 
+
+// ===== Quartz Remote Geode Download Install START =====
+
+function qSafeRemoteCacheName(value, ext) {
+  const base = String(value || 'unknown-package')
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'unknown-package';
+
+  return `${base}${ext}`;
+}
+
+function qRemoteCacheDir() {
+  const dir = path.join(app.getPath('userData'), 'cache', 'remote-geode');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function qRemoteGeodeDownloadUrl(mod) {
+  return (
+    mod.geodeDownloadUrl ||
+    mod.downloadUrl ||
+    mod.packageUrl ||
+    mod.fileUrl ||
+    mod.url ||
+    mod.links?.download ||
+    mod.links?.geode ||
+    mod.links?.package ||
+    null
+  );
+}
+
+
+async function qDownloadBuffer(url) {
+  if (!url) {
+    throw new Error('Missing download URL.');
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'QuartzLauncher/0.1',
+        'Accept': 'application/octet-stream,*/*'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed with HTTP ${response.status}: ${url}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    if (!buffer.length) {
+      throw new Error(`Downloaded file was empty: ${url}`);
+    }
+
+    return buffer;
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      throw new Error(`Download timed out after 60 seconds: ${url}`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function qWrapRemoteGeodeAsQuartz(mod) {
+  const AdmZip = require('adm-zip');
+
+  const packageId = mod.id || mod.packageId || mod.modId;
+  const downloadUrl = qRemoteGeodeDownloadUrl(mod);
+
+  if (!packageId) {
+    throw new Error('Remote package is missing an id.');
+  }
+
+  if (!downloadUrl) {
+    throw new Error(`Remote Geode package is missing download URL: ${packageId}`);
+  }
+
+  const cacheDir = qRemoteCacheDir();
+  const geodePath = path.join(cacheDir, qSafeRemoteCacheName(packageId, '.geode'));
+  const quartzPath = path.join(cacheDir, qSafeRemoteCacheName(packageId, '.quartz'));
+
+  const geodeBuffer = await qDownloadBuffer(downloadUrl);
+  fs.writeFileSync(geodePath, geodeBuffer);
+
+  const manifest = {
+    format: 'quartz.package',
+    formatVersion: 1,
+    id: packageId,
+    name: mod.name || packageId,
+    developer: mod.developer || mod.author || 'Unknown',
+    version: String(mod.version || mod.latestVersion || '0.0.0'),
+    engine: 'geode-compat',
+    category: mod.category || 'Geode Compatibility',
+    description: mod.description || '',
+    payload: 'payload/mod.geode',
+    installAs: `${packageId}.geode`,
+    tags: Array.isArray(mod.tags) ? mod.tags : ['Geode Compatibility'],
+    game: mod.game || 'geometry-dash',
+    gameVersion: mod.gameVersion || '*',
+    dependencies: Array.isArray(mod.dependencies) ? mod.dependencies : [],
+    permissions: Array.isArray(mod.permissions) ? mod.permissions : [],
+    source: {
+      type: 'remote-geode',
+      url: downloadUrl
+    }
+  };
+
+  const zip = new AdmZip();
+  zip.addFile('quartz.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'));
+  zip.addFile('payload/mod.geode', geodeBuffer);
+  zip.writeZip(quartzPath);
+
+  return quartzPath;
+}
+
 ipcMain.handle('install-quartz-package', async (event, packageId) => {
   try {
     qEnsureEnableFolders();
 
     const mod = qFindAvailableQuartzPackage(packageId);
-
-    if (mod) {
-      const quartzPackagePathForValidation =
-        mod.packagePath ||
-        mod.path ||
-        mod.filePath ||
-        mod.sourcePath;
-
-      const validationResult = qValidateQuartzBeforeUse(quartzPackagePathForValidation, 'install');
-
-      if (!validationResult.ok) {
-        return validationResult;
-      }
-    }
-
 
     if (!mod) {
       return {
@@ -1548,15 +1660,61 @@ ipcMain.handle('install-quartz-package', async (event, packageId) => {
       };
     }
 
-    const dest = qLibraryPackagePath(mod.id);
-    fs.copyFileSync(mod.packagePath, dest);
+    const modId = mod.id || packageId;
 
-    const enabledMod = qEnableQuartzMod(mod.id);
+    const isRemoteGeode =
+      mod.installMode === 'download-and-wrap-geode' ||
+      mod.sourceType === 'remote-geode' ||
+      mod.remote === true;
+
+    let quartzPackagePathForValidation = null;
+
+    if (isRemoteGeode) {
+      quartzPackagePathForValidation = await qWrapRemoteGeodeAsQuartz({
+        ...mod,
+        id: modId
+      });
+    } else {
+      quartzPackagePathForValidation =
+        mod.packagePath ||
+        mod.path ||
+        mod.filePath ||
+        mod.sourcePath;
+    }
+
+    if (!quartzPackagePathForValidation || !fs.existsSync(quartzPackagePathForValidation)) {
+      return {
+        ok: false,
+        error: `Package file does not exist: ${quartzPackagePathForValidation || 'unknown'}`,
+        packageId: modId
+      };
+    }
+
+    const validationResult = qValidateQuartzBeforeUse(quartzPackagePathForValidation, 'install');
+
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+
+    const dest = qLibraryPackagePath(modId);
+    fs.copyFileSync(quartzPackagePathForValidation, dest);
+
+    const enabledMod = qEnableQuartzMod(modId);
+
+    let runtimeSyncResult = null;
+
+    try {
+      runtimeSyncResult = qBuildRuntimeManifest();
+    } catch (syncError) {
+      console.warn('[Quartz Install] runtime sync failed:', syncError.message || syncError);
+    }
 
     return {
       ok: true,
       installed: true,
       enabled: true,
+      runtimeSynced: !!runtimeSyncResult,
+      runtime: runtimeSyncResult,
       quartzLibraryDir: QUARTZ_NATIVE_LIBRARY_DIR,
       quartzEnabledDir: QUARTZ_NATIVE_ENABLED_DIR,
       mod: enabledMod
@@ -1564,13 +1722,10 @@ ipcMain.handle('install-quartz-package', async (event, packageId) => {
   } catch (error) {
     return {
       ok: false,
-      error: error.message
+      error: error.message || String(error)
     };
   }
 });
-
-try {
-} catch {}
 
 ipcMain.handle('uninstall-quartz-package', async (event, packageId) => {
   try {
@@ -1850,48 +2005,177 @@ function qEnsureRuntimeFolders() {
 }
 
 
+
 function qValidateQuartzPackageFileSync(packagePath) {
+  const allowedEngines = new Set([
+    'quartz-native',
+    'quartz-resource',
+    'geode-compat'
+  ]);
+
+  const errors = [];
+  const warnings = [];
+  const passes = [];
+
+  const fail = (message) => errors.push(`ERROR ${message}`);
+  const warn = (message) => warnings.push(`WARN  ${message}`);
+  const pass = (message) => passes.push(`PASS  ${message}`);
+
   try {
     if (!packagePath || !fs.existsSync(packagePath)) {
+      fail(`File does not exist: ${packagePath || 'unknown'}`);
       return {
         ok: false,
-        error: `Package file does not exist: ${packagePath || 'unknown'}`
+        status: 1,
+        output: [...passes, ...warnings, ...errors].join('\n'),
+        error: errors.join('\n')
       };
     }
 
-    if (path.extname(packagePath).toLowerCase() !== '.quartz') {
-      return {
-        ok: true,
-        skipped: true,
-        output: 'Not a .quartz package.'
-      };
+    if (path.extname(packagePath) !== '.quartz') {
+      warn('File extension is not .quartz');
+    } else {
+      pass('File extension is .quartz');
     }
 
-    const validatorPath = path.join(__dirname, 'tools', 'validate-quartz-package.js');
-
-    if (!fs.existsSync(validatorPath)) {
+    let zip;
+    try {
+      zip = new AdmZip(packagePath);
+      zip.getEntries();
+      pass('Package is a readable ZIP archive');
+    } catch (error) {
+      fail(`Could not read ZIP archive: ${error.message}`);
       return {
         ok: false,
-        error: `Quartz validator is missing: ${validatorPath}`
+        status: 1,
+        output: [...passes, ...warnings, ...errors].join('\n'),
+        error: errors.join('\n')
       };
     }
 
-    const result = spawnSync(process.execPath, [validatorPath, packagePath], {
-      cwd: __dirname,
-      encoding: 'utf8'
-    });
+    const hasFile = (filePath) => !!zip.getEntry(filePath);
+    const manifestEntry = zip.getEntry('quartz.json');
 
-    const output = `${result.stdout || ''}${result.stderr || ''}`.trim();
+    if (!manifestEntry) {
+      fail('Missing required quartz.json');
+      return {
+        ok: false,
+        status: 1,
+        output: [...passes, ...warnings, ...errors].join('\n'),
+        error: errors.join('\n')
+      };
+    }
+
+    pass('Found quartz.json');
+
+    let manifest;
+    try {
+      manifest = JSON.parse(manifestEntry.getData().toString('utf8'));
+      pass('quartz.json is valid JSON');
+    } catch (error) {
+      fail(`quartz.json is invalid JSON: ${error.message}`);
+      return {
+        ok: false,
+        status: 1,
+        output: [...passes, ...warnings, ...errors].join('\n'),
+        error: errors.join('\n')
+      };
+    }
+
+    const required = [
+      'format',
+      'formatVersion',
+      'id',
+      'name',
+      'version',
+      'engine'
+    ];
+
+    for (const key of required) {
+      if (manifest[key] === undefined || manifest[key] === null || manifest[key] === '') {
+        fail(`Missing required field: ${key}`);
+      } else {
+        pass(`Required field exists: ${key}`);
+      }
+    }
+
+    if (manifest.format !== 'quartz.package') {
+      fail(`format should be quartz.package, got: ${manifest.format}`);
+    } else {
+      pass('format is quartz.package');
+    }
+
+    if (manifest.formatVersion !== 1) {
+      warn(`formatVersion is expected to be 1, got: ${manifest.formatVersion}`);
+    } else {
+      pass('formatVersion is 1');
+    }
+
+    if (!allowedEngines.has(manifest.engine)) {
+      fail(`Invalid engine: ${manifest.engine}`);
+    } else {
+      pass(`Engine is valid: ${manifest.engine}`);
+    }
+
+    if (!/^[a-zA-Z0-9._-]+$/.test(String(manifest.id || ''))) {
+      fail('id should only use letters, numbers, dots, underscores, and dashes');
+    } else {
+      pass('id format looks safe');
+    }
+
+    if (manifest.engine === 'quartz-native') {
+      if (!manifest.entry) {
+        fail('quartz-native package is missing entry');
+      } else if (!hasFile(manifest.entry)) {
+        fail(`quartz-native entry file is missing: ${manifest.entry}`);
+      } else {
+        pass(`quartz-native entry exists: ${manifest.entry}`);
+      }
+    }
+
+    if (manifest.engine === 'geode-compat') {
+      const payload = manifest.payload || manifest.entry;
+
+      if (!payload) {
+        warn('geode-compat package has no payload field');
+      } else if (!hasFile(payload)) {
+        fail(`geode-compat payload file is missing: ${payload}`);
+      } else {
+        pass(`geode-compat payload exists: ${payload}`);
+      }
+    }
+
+    if (!Array.isArray(manifest.dependencies)) {
+      warn('dependencies should be an array');
+    } else {
+      pass('dependencies is an array');
+    }
+
+    if (!Array.isArray(manifest.permissions)) {
+      warn('permissions should be an array');
+    } else {
+      pass('permissions is an array');
+    }
+
+    const output = [
+      ...passes,
+      ...warnings,
+      ...errors,
+      '',
+      `Validation finished with ${errors.length} error(s), ${warnings.length} warning(s).`
+    ].join('\n');
 
     return {
-      ok: result.status === 0,
-      status: result.status,
+      ok: errors.length === 0,
+      status: errors.length === 0 ? 0 : 1,
       output,
-      error: result.status === 0 ? null : output || 'Package validation failed.'
+      error: errors.length ? errors.join('\n') : null
     };
   } catch (error) {
     return {
       ok: false,
+      status: 1,
+      output: '',
       error: error && error.message ? error.message : String(error)
     };
   }
@@ -2113,3 +2397,128 @@ app.whenReady().then(() => {
   setTimeout(() => qSafeAutoSyncRuntime('startup'), 1000);
 });
 // ===== Quartz Runtime Auto Sync On Startup END =====
+
+// ===== Quartz Remote Index Display Override START =====
+// This override lets the Index show local Quartz packages AND remote Geode compatibility entries.
+// Remote entries are displayed in the Index now. Install/download wrapping is wired in a later patch.
+
+function qLoadQuartzIndexEntriesForDisplay() {
+  const indexPath = path.join(__dirname, 'assets', 'index', 'quartz-index.json');
+
+  if (!fs.existsSync(indexPath)) {
+    return [];
+  }
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+
+    if (Array.isArray(raw.packages)) {
+      return raw.packages;
+    }
+
+    if (Array.isArray(raw.mods)) {
+      return raw.mods;
+    }
+
+    return [];
+  } catch (error) {
+    console.warn('Failed to read Quartz index:', error.message);
+    return [];
+  }
+}
+
+function qResolveLocalQuartzIndexPackagePath(entry) {
+  const rawPath =
+    entry.packagePath ||
+    entry.path ||
+    entry.filePath ||
+    entry.sourcePath;
+
+  if (!rawPath) {
+    return null;
+  }
+
+  if (path.isAbsolute(rawPath)) {
+    return rawPath;
+  }
+
+  return path.join(__dirname, rawPath);
+}
+
+function qNormalizeQuartzIndexEntryForDisplay(entry) {
+  const id = String(entry.id || '').trim();
+
+  if (!id) {
+    return null;
+  }
+
+  const installMode =
+    entry.installMode ||
+    (entry.geodeDownloadUrl ? 'download-and-wrap-geode' : 'local-quartz-package');
+
+  const isRemoteGeode =
+    installMode === 'download-and-wrap-geode' ||
+    entry.sourceType === 'remote-geode' ||
+    !!entry.geodeDownloadUrl;
+
+  const packagePath = isRemoteGeode
+    ? null
+    : qResolveLocalQuartzIndexPackagePath(entry);
+
+  const installed = fs.existsSync(qLibraryPackagePath(id));
+
+  return {
+    id,
+    name: entry.name || id,
+    developer: entry.developer || entry.author || 'Unknown',
+    version: entry.version || entry.modVersion || 'unknown',
+    description: entry.description || 'No description provided.',
+    engine: entry.engine || (isRemoteGeode ? 'geode-compat' : 'quartz-resource'),
+    category: entry.category || (isRemoteGeode ? 'Geode' : 'Quartz'),
+    tags: Array.isArray(entry.tags) ? entry.tags : [],
+    source: entry.source || (isRemoteGeode ? 'geode-index' : 'local-quartz'),
+    sourceType: entry.sourceType || (isRemoteGeode ? 'remote-geode' : 'local-quartz'),
+    installMode,
+    remote: isRemoteGeode,
+    geodeModId: entry.geodeModId || (isRemoteGeode ? id : null),
+    geodeDownloadUrl: entry.geodeDownloadUrl || null,
+    geodeHash: entry.geodeHash || null,
+    downloadCount: entry.downloadCount || 0,
+    featured: !!entry.featured,
+    gameVersion: entry.gameVersion || null,
+    geodeVersion: entry.geodeVersion || null,
+    links: entry.links || {},
+    updatedAt: entry.updatedAt || null,
+    packagePath,
+    installed,
+    enabled: installed ? qIsQuartzModEnabled(id) : false
+  };
+}
+
+function qListAvailableQuartzPackages() {
+  qEnsureEnableFolders();
+
+  const entries = qLoadQuartzIndexEntriesForDisplay();
+
+  const mods = entries
+    .map(qNormalizeQuartzIndexEntryForDisplay)
+    .filter(Boolean);
+
+  const seen = new Set();
+
+  return mods.filter((mod) => {
+    if (seen.has(mod.id)) return false;
+    seen.add(mod.id);
+    return true;
+  });
+}
+
+function qFindAvailableQuartzPackage(packageId) {
+  return qListAvailableQuartzPackages().find((mod) => mod.id === packageId) || null;
+}
+
+// ===== Quartz Remote Index Display Override END =====

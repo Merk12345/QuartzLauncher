@@ -17,7 +17,8 @@
     "site:open": "xdg-open https://quartz-launcher.pages.dev",
     "site:preview": "python3 -m http.server 5173 --directory site",
     "site:deploy": "wrangler pages deploy site --project-name=quartz-launcher --branch=main --commit-dirty=true",
-    "build:prerelease": "node tools/build-prerelease.js"
+    "build:prerelease": "node tools/build-prerelease.js",
+    "sync:geode-index": "node tools/sync-geode-index-to-quartz.js"
   },
   "devDependencies": {
     "@electron/packager": "^20.0.1",
