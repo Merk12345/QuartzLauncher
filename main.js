@@ -2061,6 +2061,120 @@ ipcMain.handle('dev-get-project-status', async (_event, projectName = '') => {
   }
 });
 
+
+function qDevNormalizeNewProjectFilePath(relativePath = '') {
+  let normalized = String(relativePath || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .trim();
+
+  if (!normalized) {
+    throw new Error('Enter a file name, like helpers.js or payload/helpers.js.');
+  }
+
+  if (normalized.includes('\0') || normalized.split('/').includes('..')) {
+    throw new Error('Unsafe file path.');
+  }
+
+  if (!normalized.includes('/')) {
+    normalized = `payload/${normalized}`;
+  }
+
+  if (!path.extname(normalized)) {
+    normalized = `${normalized}.js`;
+  }
+
+  if (!normalized.startsWith('payload/')) {
+    throw new Error('New files must be created inside payload/ for now.');
+  }
+
+  if (!qDevEditablePathIsAllowed(normalized)) {
+    throw new Error(`This file type is not editable yet: ${normalized}`);
+  }
+
+  return normalized;
+}
+
+function qDevStarterContentForNewFile(relativePath) {
+  const ext = path.extname(relativePath).toLowerCase();
+  const base = path.basename(relativePath);
+  const NL = String.fromCharCode(10);
+
+  if (ext === '.js') {
+    return [
+      "'use strict';",
+      "",
+      `// ${base}`,
+      "// Add helper code here.",
+      "",
+      "module.exports = {};",
+      ""
+    ].join(NL);
+  }
+
+  if (ext === '.json') {
+    return [
+      "{",
+      "  \"enabled\": true",
+      "}",
+      ""
+    ].join(NL);
+  }
+
+  if (ext === '.md') {
+    return [
+      `# ${base}`,
+      "",
+      "Notes for this Quartz mod file.",
+      ""
+    ].join(NL);
+  }
+
+  return "";
+}
+
+ipcMain.handle('dev-create-project-file', async (_event, projectName = '', relativePath = '') => {
+  try {
+    const project = qDevResolveWorkspaceProject(projectName);
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project selected. Create or select a project first.'
+      };
+    }
+
+    const normalized = qDevNormalizeNewProjectFilePath(relativePath);
+    const editable = qDevGetEditableFilePath(project, normalized);
+
+    if (fs.existsSync(editable.filePath)) {
+      return {
+        ok: false,
+        error: `File already exists: ${editable.relativePath}`
+      };
+    }
+
+    fs.mkdirSync(path.dirname(editable.filePath), { recursive: true });
+    fs.writeFileSync(editable.filePath, qDevStarterContentForNewFile(editable.relativePath), 'utf8');
+
+    const stat = fs.statSync(editable.filePath);
+
+    return {
+      ok: true,
+      projectName: project.name,
+      relativePath: editable.relativePath,
+      filePath: editable.filePath,
+      size: stat.size,
+      message: `Created ${editable.relativePath}`
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message
+    };
+  }
+});
+
 // ===== Quartz Developer Tools END =====
 
 

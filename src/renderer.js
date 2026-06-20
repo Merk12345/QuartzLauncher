@@ -563,6 +563,13 @@ function addStyles() {
       margin-bottom: 10px;
     }
 
+    .quartz-dev-new-file-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
     .quartz-dev-editor-actions {
       display: flex;
       flex-wrap: wrap;
@@ -1883,6 +1890,50 @@ function bindButtons() {
     return result;
   }
 
+  async function createDevCodeFile(relativePath = '') {
+    const input = $('#devNewFileInput');
+    const requestedPath = String(relativePath || input?.value || '').trim();
+
+    if (!requestedPath) {
+      const error = 'Enter a file name first, like helpers.js.';
+      setDevCodeInfo(error);
+      setStatus(error);
+      devTerminalLog('Create file failed:', error);
+      return { ok: false, error };
+    }
+
+    if (!window.quartzAPI?.devCreateProjectFile) {
+      const error = 'New File backend is not available. Restart Quartz Launcher and try again.';
+      setDevCodeInfo(error);
+      setStatus(error);
+      devTerminalLog('Create file failed:', error);
+      return { ok: false, error };
+    }
+
+    const result = await window.quartzAPI.devCreateProjectFile(getSelectedDevProject(), requestedPath);
+
+    if (!isOk(result)) {
+      setDevCodeInfo(`Create file failed: ${getError(result)}`);
+      setStatus(`Create file failed: ${getError(result)}`);
+      devLog(`Create file failed: ${getError(result)}`);
+      devTerminalLog('Create file failed:', getError(result));
+      return result;
+    }
+
+    if (input) input.value = '';
+
+    await refreshDevEditableFiles(result.relativePath);
+    await openDevCodeFile(result.relativePath);
+    await refreshDevProjectStatus();
+
+    setDevCodeInfo(`Created and opened: ${result.relativePath}`);
+    setStatus(`Created ${result.relativePath}`);
+    devLog(`Created ${result.relativePath}`);
+    devTerminalLog('Created file:', result.relativePath);
+
+    return result;
+  }
+
   async function saveThenRunDevCommand(command) {
     const saveResult = await saveDevCodeFile();
 
@@ -1922,7 +1973,8 @@ function bindButtons() {
 
   async function runDevTerminalCommand(command) {
     const raw = String(command || '').trim();
-    const cmd = raw.toLowerCase();
+    const cmd = raw.toLowerCase().split(/\s+/)[0];
+    const args = raw.slice(cmd.length).trim();
 
     if (!cmd) return;
 
@@ -1960,6 +2012,11 @@ function bindButtons() {
 
     if (cmd === 'status') {
       await refreshDevProjectStatus(true);
+      return;
+    }
+
+    if (cmd === 'create' || cmd === 'create-file' || cmd === 'new-file') {
+      await createDevCodeFile(args);
       return;
     }
 
@@ -2171,6 +2228,17 @@ function bindButtons() {
 
   $('#devRefreshStatusBtn')?.addEventListener('click', async () => {
     await refreshDevProjectStatus(true);
+  });
+
+  $('#devCreateFileBtn')?.addEventListener('click', async () => {
+    await createDevCodeFile();
+  });
+
+  $('#devNewFileInput')?.addEventListener('keydown', async event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      await createDevCodeFile();
+    }
   });
 
   $('#devCodeRefreshFilesBtn')?.addEventListener('click', async () => {
