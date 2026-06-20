@@ -991,33 +991,137 @@ ipcMain.handle('dev-create-template', async (_event, options = {}) => {
       'utf8'
     );
 
-    const starterMain = [
-      "'use strict';",
-      "",
-      `console.log(${JSON.stringify(`Hello from ${requestedName}!`)});`,
-      "",
-      "module.exports = {",
-      `  id: ${JSON.stringify(finalId)},`,
-      `  name: ${JSON.stringify(requestedName)}`,
-      "};",
-      ""
-    ].join('\n');
+    const NL = String.fromCharCode(10);
+    const templateType = ['basic', 'empty', 'ui', 'settings'].includes(requestedTemplate)
+      ? requestedTemplate
+      : 'basic';
+
+    let starterMainLines = [];
+    let templateReadme = 'Basic Quartz Native Mod';
+
+    if (templateType === 'empty') {
+      templateReadme = 'Empty Package';
+      starterMainLines = [
+        "'use strict';",
+        "",
+        "// Empty Quartz package starter.",
+        "// Add your mod code here when you are ready.",
+        "",
+        "module.exports = {",
+        `  id: ${JSON.stringify(finalId)},`,
+        `  name: ${JSON.stringify(requestedName)},`,
+        "  type: 'empty-starter'",
+        "};",
+        ""
+      ];
+    } else if (templateType === 'ui') {
+      templateReadme = 'UI Mod Starter';
+      starterMainLines = [
+        "'use strict';",
+        "",
+        "// UI Mod Starter",
+        "// Use this file as a starting point for Quartz-native UI work.",
+        "",
+        "function initQuartzUI() {",
+        `  console.log(${JSON.stringify(`${requestedName} UI starter loaded.`)});`,
+        "}",
+        "",
+        "initQuartzUI();",
+        "",
+        "module.exports = {",
+        `  id: ${JSON.stringify(finalId)},`,
+        `  name: ${JSON.stringify(requestedName)},`,
+        "  type: 'ui-starter'",
+        "};",
+        ""
+      ];
+    } else if (templateType === 'settings') {
+      templateReadme = 'Settings Mod Starter';
+      starterMainLines = [
+        "'use strict';",
+        "",
+        "// Settings Mod Starter",
+        "// This starter includes a basic settings object you can expand later.",
+        "",
+        "const defaultSettings = {",
+        "  enabled: true",
+        "};",
+        "",
+        "function loadSettings() {",
+        `  console.log(${JSON.stringify(`${requestedName} settings starter loaded.`)});`,
+        "  return { ...defaultSettings };",
+        "}",
+        "",
+        "module.exports = {",
+        `  id: ${JSON.stringify(finalId)},`,
+        `  name: ${JSON.stringify(requestedName)},`,
+        "  type: 'settings-starter',",
+        "  defaultSettings,",
+        "  loadSettings",
+        "};",
+        ""
+      ];
+
+      fs.writeFileSync(
+        path.join(payloadDir, 'settings.json'),
+        JSON.stringify({ enabled: true }, null, 2) + NL,
+        'utf8'
+      );
+    } else {
+      starterMainLines = [
+        "'use strict';",
+        "",
+        `console.log(${JSON.stringify(`Hello from ${requestedName}!`)});`,
+        "",
+        "module.exports = {",
+        `  id: ${JSON.stringify(finalId)},`,
+        `  name: ${JSON.stringify(requestedName)},`,
+        "  type: 'basic-starter'",
+        "};",
+        ""
+      ];
+    }
 
     fs.writeFileSync(
       path.join(payloadDir, 'main.js'),
-      starterMain,
+      starterMainLines.join(NL),
       'utf8'
     );
+
+    const readmeText = [
+      `# ${requestedName}`,
+      "",
+      requestedDescription,
+      "",
+      "Created with Quartz Launcher Dev Tools.",
+      "",
+      `Template: ${templateReadme}`,
+      "",
+      "## Files",
+      "",
+      "- quartz.json - package manifest",
+      "- payload/main.js - starter mod entry file",
+      ""
+    ].join(NL);
 
     fs.writeFileSync(
       path.join(modDir, 'README.md'),
-      `# ${requestedName}\n\n${requestedDescription}\n\nCreated with Quartz Launcher Dev Tools.\n\n## Files\n\n- quartz.json - package manifest\n- payload/main.js - starter mod entry file\n`,
+      readmeText,
       'utf8'
     );
 
+    const changelogText = [
+      "# Changelog",
+      "",
+      "## 0.1.0",
+      "",
+      "- Initial starter mod.",
+      ""
+    ].join(NL);
+
     fs.writeFileSync(
       path.join(modDir, 'CHANGELOG.md'),
-      `# Changelog\n\n## 0.1.0\n\n- Initial starter mod.\n`,
+      changelogText,
       'utf8'
     );
 
