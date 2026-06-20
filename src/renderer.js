@@ -1691,7 +1691,27 @@ function bindButtons() {
       return;
     }
 
-    devTerminalLog(`Command "${raw}" is not wired yet. Backend command support is next.`);
+    const backendCommands = new Set(['ls', 'tree', 'manifest', 'check', 'run']);
+
+    if (backendCommands.has(cmd)) {
+      const result = await window.quartzAPI.devRunTerminalCommand(getSelectedDevProject(), cmd);
+
+      if (isOk(result)) {
+        devTerminalLog(result.output || result.message || 'Command finished.');
+        setStatus(`Dev command finished: ${cmd}`);
+      } else {
+        devTerminalLog([
+          `Command failed: ${raw}`,
+          getError(result),
+          result.output || ''
+        ].filter(Boolean).join('\n'));
+        setStatus(`Dev command failed: ${getError(result)}`);
+      }
+
+      return;
+    }
+
+    devTerminalLog(`Unknown command "${raw}". Type help to see available commands.`);
   }
 
   $('.dev-command-btn')?.addEventListener?.('click', () => {});

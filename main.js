@@ -1381,6 +1381,251 @@ ipcMain.handle('dev-get-latest-built-package', async () => {
   }
 });
 
+
+function qDevFormatEntry(entry) {
+  if (entry.isDirectory()) return `DIR  ${entry.name}/`;
+  return `FILE ${entry.name}`;
+}
+
+function qDevIgnoredTreeName(name) {
+  return new Set([
+    '.git',
+    'node_modules',
+    'dist',
+    'build',
+    'builds',
+    '.DS_Store'
+  ]).has(name);
+}
+
+function qDevSafeResolve(rootDir, targetPath) {
+  const root = path.resolve(rootDir);
+  const target = path.resolve(targetPath);
+
+  if (target !== root && !target.startsWith(root + path.sep)) {
+    throw new Error('Path escaped the selected project folder.');
+  }
+
+  return target;
+}
+
+function qDevGetProjectEntryFile(project, manifest) {
+  const entry = String(manifest?.entry || 'payload/main.js');
+
+  if (path.isAbsolute(entry)) {
+    throw new Error('Manifest entry must be a relative path.');
+  }
+
+  const entryPath = qDevSafeResolve(project.modDir, path.join(project.modDir, entry));
+
+  if (!fs.existsSync(entryPath)) {
+    throw new Error(`Entry file does not exist: ${entry}`);
+  }
+
+  return {
+    entry,
+    entryPath,
+    code: fs.readFileSync(entryPath, 'utf8')
+  };
+}
+
+function qDevTreeLines(dir, rootDir, prefix = '', depth = 0, state = { count: 0 }) {
+  if (depth > 5) return [];
+
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter(entry => !qDevIgnoredTreeName(entry.name))
+    .sort((a, b) => {
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  const lines = [];
+
+  entries.forEach((entry, index) => {
+    if (state.count > 220) return;
+
+    const last = index === entries.length - 1;
+    const connector = last ? '└─ ' : '├─ ';
+    const entryPath = path.join(dir, entry.name);
+    const label = entry.isDirectory() ? `${entry.name}/` : entry.name;
+
+    lines.push(`${prefix}${connector}${label}`);
+    state.count += 1;
+
+    if (entry.isDirectory()) {
+      const nextPrefix = prefix + (last ? '   ' : '│  ');
+      lines.push(...qDevTreeLines(entryPath, rootDir, nextPrefix, depth + 1, state));
+    }
+  });
+
+  return lines;
+}
+
+function qDevRunStarterInSandbox(entryInfo) {
+  const vm = require('vm');
+  const logs = [];
+
+  const capture = (...args) => {
+    logs.push(args.map(value => {
+      if (typeof value === 'string') return value;
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }).join(' '));
+  };
+
+  const sandbox = {
+    console: {
+      log: capture,
+      warn: (...args) => capture('[warn]', ...args),
+      error: (...args) => capture('[error]', ...args)
+    },
+    module: {
+      exports: {}
+    }
+  };
+
+  sandbox.exports = sandbox.module.exports;
+
+  vm.createContext(sandbox);
+  vm.runInContext(entryInfo.code, sandbox, {
+    filename: entryInfo.entryPath,
+    timeout: 1000
+  });
+
+  let exported = '';
+
+  try {
+    exported = JSON.stringify(sandbox.module.exports, null, 2);
+  } catch {
+    exported = String(sandbox.module.exports);
+  }
+
+  return [
+    `Ran ${entryInfo.entry}`,
+    '',
+    logs.length ? logs.join('\n') : '(no console output)',
+    '',
+    'module.exports:',
+    exported
+  ].join('\n');
+}
+
+ipcMain.handle('dev-run-terminal-command', async (_event, projectName = '', rawCommand = '') => {
+  try {
+    const command = String(rawCommand || '').trim().toLowerCase().split(/\s+/)[0];
+
+    const allowed = new Set(['ls', 'tree', 'manifest', 'check', 'run']);
+
+    if (!allowed.has(command)) {
+      return {
+        ok: false,
+        error: `Unknown safe Dev Terminal command: ${rawCommand}`
+      };
+    }
+
+    const project = qDevResolveWorkspaceProject(projectName);
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project selected. Create or select a project first.',
+        workspaceDir: qGetDevWorkspaceDir()
+      };
+    }
+
+    const manifest = qDevReadManifest(project.manifestPath);
+
+    if (command === 'ls') {
+      const entries = fs
+        .readdirSync(project.modDir, { withFileTypes: true })
+        .filter(entry => !qDevIgnoredTreeName(entry.name))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(qDevFormatEntry);
+
+      return {
+        ok: true,
+        command,
+        projectName: project.name,
+        output: entries.length ? entries.join('\n') : '(project folder is empty)'
+      };
+    }
+
+    if (command === 'tree') {
+      const lines = [
+        `${project.name}/`,
+        ...qDevTreeLines(project.modDir, project.modDir)
+      ];
+
+      return {
+        ok: true,
+        command,
+        projectName: project.name,
+        output: lines.join('\n')
+      };
+    }
+
+    if (command === 'manifest') {
+      return {
+        ok: true,
+        command,
+        projectName: project.name,
+        output: JSON.stringify(manifest, null, 2)
+      };
+    }
+
+    if (command === 'check') {
+      const entryInfo = qDevGetProjectEntryFile(project, manifest);
+
+      try {
+        new Function(entryInfo.code);
+
+        return {
+          ok: true,
+          command,
+          projectName: project.name,
+          output: `PASS JS syntax looks valid:\n${entryInfo.entry}`
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          command,
+          projectName: project.name,
+          error: error.message,
+          output: `FAIL JS syntax check failed:\n${entryInfo.entry}\n\n${error.stack || error.message}`
+        };
+      }
+    }
+
+    if (command === 'run') {
+      const entryInfo = qDevGetProjectEntryFile(project, manifest);
+      const output = qDevRunStarterInSandbox(entryInfo);
+
+      return {
+        ok: true,
+        command,
+        projectName: project.name,
+        output
+      };
+    }
+
+    return {
+      ok: false,
+      error: `Command not handled: ${command}`
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      output: error.stack || error.message
+    };
+  }
+});
+
 // ===== Quartz Developer Tools END =====
 
 

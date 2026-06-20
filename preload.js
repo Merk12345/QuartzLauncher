@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('quartzAPI', {
   devTestInstallLatestPackage: (projectName) => ipcRenderer.invoke('dev-test-install-latest-package', projectName),
   devOpenBuildsFolder: () => ipcRenderer.invoke('dev-open-builds-folder'),
   devGetLatestBuiltPackage: () => ipcRenderer.invoke('dev-get-latest-built-package'),
+  devRunTerminalCommand: (projectName, command) => ipcRenderer.invoke('dev-run-terminal-command', projectName, command),
 
   openModsFolder: () => ipcRenderer.invoke('open-mods-folder'),
 
