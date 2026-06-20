@@ -2175,6 +2175,306 @@ ipcMain.handle('dev-create-project-file', async (_event, projectName = '', relat
   }
 });
 
+
+function qGetDevSubmissionsDir() {
+  return path.join(qGetDevWorkspaceDir(), 'submissions');
+}
+
+function qDevSubmissionTimestamp() {
+  return new Date()
+    .toISOString()
+    .replace(/\.\d+Z$/, '')
+    .replace(/[:T]/g, '-');
+}
+
+function qDevValidatePackageForSubmission(packagePath) {
+  const lines = [];
+  const errors = [];
+  const warnings = [];
+
+  const pass = message => lines.push(`PASS  ${message}`);
+  const warn = message => {
+    warnings.push(message);
+    lines.push(`WARN  ${message}`);
+  };
+  const fail = message => {
+    errors.push(message);
+    lines.push(`FAIL  ${message}`);
+  };
+
+  let zip = null;
+  let manifest = null;
+
+  if (String(packagePath).toLowerCase().endsWith('.quartz')) {
+    pass('File extension is .quartz');
+  } else {
+    fail('File extension must be .quartz');
+  }
+
+  if (!fs.existsSync(packagePath)) {
+    fail('Package file does not exist');
+    return {
+      ok: false,
+      status: 1,
+      output: `${lines.join('\n')}\n\nValidation finished with ${errors.length} error(s), ${warnings.length} warning(s).`,
+      error: errors.join('\n'),
+      errors,
+      warnings,
+      manifest: null
+    };
+  }
+
+  try {
+    zip = new AdmZip(packagePath);
+    zip.getEntries();
+    pass('Package is a readable ZIP archive');
+  } catch (error) {
+    fail(`Package is not a readable ZIP archive: ${error.message}`);
+  }
+
+  if (!zip) {
+    return {
+      ok: false,
+      status: 1,
+      output: `${lines.join('\n')}\n\nValidation finished with ${errors.length} error(s), ${warnings.length} warning(s).`,
+      error: errors.join('\n'),
+      errors,
+      warnings,
+      manifest: null
+    };
+  }
+
+  const manifestEntry = zip.getEntry('quartz.json');
+
+  if (manifestEntry) {
+    pass('Found quartz.json');
+  } else {
+    fail('Missing quartz.json');
+  }
+
+  if (manifestEntry) {
+    try {
+      manifest = JSON.parse(manifestEntry.getData().toString('utf8'));
+      pass('quartz.json is valid JSON');
+    } catch (error) {
+      fail(`quartz.json is not valid JSON: ${error.message}`);
+    }
+  }
+
+  const requiredFields = [
+    'format',
+    'formatVersion',
+    'id',
+    'name',
+    'version',
+    'engine'
+  ];
+
+  if (manifest) {
+    for (const field of requiredFields) {
+      if (manifest[field] === undefined || manifest[field] === null || manifest[field] === '') {
+        fail(`Required field missing: ${field}`);
+      } else {
+        pass(`Required field exists: ${field}`);
+      }
+    }
+
+    if (manifest.format === 'quartz.package') {
+      pass('format is quartz.package');
+    } else {
+      fail('format must be quartz.package');
+    }
+
+    if (manifest.formatVersion === 1) {
+      pass('formatVersion is 1');
+    } else {
+      fail('formatVersion must be 1');
+    }
+
+    const validEngines = new Set(['quartz-native', 'geode-compat']);
+
+    if (validEngines.has(manifest.engine)) {
+      pass(`Engine is valid: ${manifest.engine}`);
+    } else {
+      fail(`Engine is not valid: ${manifest.engine}`);
+    }
+
+    if (/^[a-z0-9][a-z0-9._-]{1,80}$/i.test(String(manifest.id || ''))) {
+      pass('id format looks safe');
+    } else {
+      fail('id format is not safe');
+    }
+
+    if (manifest.engine === 'quartz-native') {
+      const entry = String(manifest.entry || '');
+
+      if (!entry) {
+        fail('quartz-native package needs entry field');
+      } else if (path.isAbsolute(entry) || entry.includes('..')) {
+        fail('entry must be a safe relative path');
+      } else if (zip.getEntry(entry)) {
+        pass(`quartz-native entry exists: ${entry}`);
+      } else {
+        fail(`quartz-native entry is missing: ${entry}`);
+      }
+    }
+
+    if (Array.isArray(manifest.dependencies)) {
+      pass('dependencies is an array');
+    } else {
+      fail('dependencies must be an array');
+    }
+
+    if (Array.isArray(manifest.permissions)) {
+      pass('permissions is an array');
+    } else {
+      fail('permissions must be an array');
+    }
+
+    if (!manifest.description) {
+      warn('description is empty');
+    }
+
+    if (!manifest.author) {
+      warn('author is empty');
+    }
+  }
+
+  const output = `${lines.join('\n')}\n\nValidation finished with ${errors.length} error(s), ${warnings.length} warning(s).`;
+
+  return {
+    ok: errors.length === 0,
+    status: errors.length ? 1 : 0,
+    output,
+    error: errors.length ? errors.join('\n') : null,
+    errors,
+    warnings,
+    manifest
+  };
+}
+
+ipcMain.handle('dev-prepare-submission', async (_event, projectName = '') => {
+  try {
+    const project = qDevResolveWorkspaceProject(projectName);
+
+    if (!project) {
+      return {
+        ok: false,
+        error: 'No dev project selected. Create or select a project first.'
+      };
+    }
+
+    const manifest = qDevReadManifest(project.manifestPath);
+
+    fs.mkdirSync(qGetDevBuildsDir(), { recursive: true });
+    fs.mkdirSync(qGetDevSubmissionsDir(), { recursive: true });
+
+    const packagePath = path.join(qGetDevBuildsDir(), qDevPackageFileName(manifest));
+
+    qDevBuildPackageFromFolder(project.modDir, packagePath);
+
+    const validation = qDevValidatePackageForSubmission(packagePath);
+
+    if (!validation.ok) {
+      return {
+        ok: false,
+        projectName: project.name,
+        packagePath,
+        validation,
+        error: 'Submission blocked because validation failed.',
+        output: [
+          `Submission blocked for ${project.name}.`,
+          '',
+          `Package: ${packagePath}`,
+          '',
+          'Validation:',
+          validation.output
+        ].join('\n')
+      };
+    }
+
+    const submissionBaseName = `${qDevSlug(manifest.id || project.name)}-${qDevSubmissionTimestamp()}`;
+    let submissionDir = path.join(qGetDevSubmissionsDir(), submissionBaseName);
+    let counter = 2;
+
+    while (fs.existsSync(submissionDir)) {
+      submissionDir = path.join(qGetDevSubmissionsDir(), `${submissionBaseName}-${counter}`);
+      counter += 1;
+    }
+
+    fs.mkdirSync(submissionDir, { recursive: true });
+
+    const packageName = path.basename(packagePath);
+    const submissionPackagePath = path.join(submissionDir, packageName);
+
+    fs.copyFileSync(packagePath, submissionPackagePath);
+
+    const packageStat = fs.statSync(submissionPackagePath);
+
+    const submission = {
+      format: 'quartz.submission',
+      formatVersion: 1,
+      createdAt: new Date().toISOString(),
+      projectName: project.name,
+      projectFolder: project.modDir,
+      packageName,
+      packagePath: submissionPackagePath,
+      packageSize: packageStat.size,
+      manifest,
+      validation: {
+        ok: validation.ok,
+        errorCount: validation.errors.length,
+        warningCount: validation.warnings.length
+      },
+      reviewStatus: 'pending'
+    };
+
+    fs.writeFileSync(
+      path.join(submissionDir, 'submission.json'),
+      JSON.stringify(submission, null, 2) + String.fromCharCode(10),
+      'utf8'
+    );
+
+    fs.writeFileSync(
+      path.join(submissionDir, 'validation-report.txt'),
+      validation.output + String.fromCharCode(10),
+      'utf8'
+    );
+
+    const openResult = await shell.openPath(submissionDir);
+
+    return {
+      ok: true,
+      projectName: project.name,
+      submissionDir,
+      packagePath: submissionPackagePath,
+      validation,
+      openResult,
+      message: `Prepared submission for ${project.name}`,
+      output: [
+        `Prepared submission for ${project.name}`,
+        '',
+        `Submission folder: ${submissionDir}`,
+        `Package: ${submissionPackagePath}`,
+        '',
+        'Files created:',
+        '- submission.json',
+        '- validation-report.txt',
+        `- ${packageName}`,
+        '',
+        'Validation:',
+        validation.output
+      ].join('\n')
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      output: error.stack || error.message
+    };
+  }
+});
+
 // ===== Quartz Developer Tools END =====
 
 

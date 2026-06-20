@@ -1890,6 +1890,37 @@ function bindButtons() {
     return result;
   }
 
+  async function prepareDevSubmission() {
+    const projectName = getSelectedDevProject();
+
+    devLog(`Preparing submission${projectName ? ` for ${projectName}` : ''}...`);
+    devTerminalLog(`Preparing submission${projectName ? ` for ${projectName}` : ''}...`);
+
+    if (!window.quartzAPI?.devPrepareSubmission) {
+      const error = 'Prepare Submission backend is not available. Restart Quartz Launcher and try again.';
+      devLog(error);
+      devTerminalLog('Prepare submission failed:', error);
+      setStatus(error);
+      return { ok: false, error };
+    }
+
+    const result = await window.quartzAPI.devPrepareSubmission(projectName);
+
+    if (isOk(result)) {
+      rememberDevPackagePath(result);
+      devLog(result.output || result.message || 'Submission prepared.');
+      devTerminalLog('Submission prepared:', result.output || result.message || '');
+      setStatus('Submission prepared.');
+      refreshDevProjectStatus();
+    } else {
+      devLog(result.output || getError(result));
+      devTerminalLog('Prepare submission failed:', result.output || getError(result));
+      setStatus(`Prepare submission failed: ${getError(result)}`);
+    }
+
+    return result;
+  }
+
   async function createDevCodeFile(relativePath = '') {
     const input = $('#devNewFileInput');
     const requestedPath = String(relativePath || input?.value || '').trim();
@@ -2003,6 +2034,7 @@ function bindButtons() {
         'validate   Validate selected build',
         'test       Test install selected build',
         'install    Same as test install',
+        'submit     Prepare review submission folder',
         'open       Open selected project folder',
         '',
         'Note: this is a controlled Dev Terminal, not a full system shell yet.'
@@ -2017,6 +2049,11 @@ function bindButtons() {
 
     if (cmd === 'create' || cmd === 'create-file' || cmd === 'new-file') {
       await createDevCodeFile(args);
+      return;
+    }
+
+    if (cmd === 'submit' || cmd === 'prepare-submit' || cmd === 'submission') {
+      await prepareDevSubmission();
       return;
     }
 
@@ -2228,6 +2265,10 @@ function bindButtons() {
 
   $('#devRefreshStatusBtn')?.addEventListener('click', async () => {
     await refreshDevProjectStatus(true);
+  });
+
+  $('#devPrepareSubmissionBtn')?.addEventListener('click', async () => {
+    await prepareDevSubmission();
   });
 
   $('#devCreateFileBtn')?.addEventListener('click', async () => {
