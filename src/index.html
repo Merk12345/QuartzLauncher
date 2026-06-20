@@ -21,6 +21,7 @@
         <button class="nav-btn active" data-page="home">Home</button>
         <button class="nav-btn" data-page="mods">Mods</button>
         <button class="nav-btn" data-page="index">Index</button>
+        <button class="nav-btn" data-page="devtools">Dev Tools</button>
         <button class="nav-btn" data-page="settings">Settings</button>
       </nav>
 
@@ -106,6 +107,51 @@
         </div>
 
         <div id="indexGrid" class="mod-grid"></div>
+      </section>
+
+      <section id="devtools" class="page">
+        <div class="page-header">
+          <h2>Dev Tools</h2>
+          <p>Tools and guides for creating, testing, and packaging Quartz mods.</p>
+        </div>
+
+        <div class="quartz-devtools-grid">
+          <div class="quartz-dev-card">
+            <h3>📚 Developer Docs</h3>
+            <p>Open the Quartz Developer Center to read package rules, mod review info, and submission guidelines.</p>
+            <button id="openDevDocsBtn" class="secondary-btn">Open Dev Docs</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>📦 Package Format</h3>
+            <p>Learn how a .quartz package should be structured, including the manifest, payload files, and metadata.</p>
+            <button id="openPackageDocsBtn" class="secondary-btn">Package Format Docs</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>✅ Validate Package</h3>
+            <p>Check a .quartz package for common issues before sharing or submitting it.</p>
+            <button class="secondary-btn" disabled>Coming Soon</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>🧪 Test Install</h3>
+            <p>Install a local package into Quartz for testing before it goes public.</p>
+            <button id="devImportLocalBtn" class="secondary-btn">Import Local Mod</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>🧰 Create New Mod</h3>
+            <p>Start a new Quartz-native mod from a beginner-friendly template.</p>
+            <button class="secondary-btn" disabled>Coming Soon</button>
+          </div>
+
+          <div class="quartz-dev-card">
+            <h3>📤 Submit Mod</h3>
+            <p>Submit a finished package for review once the submission system is ready.</p>
+            <button class="secondary-btn" disabled>Coming Soon</button>
+          </div>
+        </div>
       </section>
 
       <section id="settings" class="page">

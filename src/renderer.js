@@ -195,6 +195,36 @@ function addStyles() {
       border-color: rgba(255,100,100,0.4) !important;
     }
 
+    .quartz-devtools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .quartz-dev-card {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-dev-card h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .quartz-dev-card p {
+      margin: 8px 0 14px;
+      opacity: 0.86;
+      line-height: 1.35;
+    }
+
+    .quartz-dev-card button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     .quartz-links {
       display: flex;
       flex-direction: column;
@@ -890,6 +920,28 @@ function bindButtons() {
     const result = await window.quartzAPI.openLink('https://quartz-launcher.pages.dev');
     if (!isOk(result)) setStatus(`Website failed: ${getError(result)}`);
     else setStatus('Website opened in your browser.');
+  });
+
+  $('#openDevDocsBtn')?.addEventListener('click', async () => {
+    setStatus('Opening Developer Center...');
+    const result = await window.quartzAPI.openLink('https://quartz-launcher.pages.dev/#developers');
+    if (!isOk(result)) setStatus(`Developer docs failed: ${getError(result)}`);
+    else setStatus('Developer Center opened in your browser.');
+  });
+
+  $('#openPackageDocsBtn')?.addEventListener('click', async () => {
+    setStatus('Opening package docs...');
+    const result = await window.quartzAPI.openLink('https://quartz-launcher.pages.dev/#developers');
+    if (!isOk(result)) setStatus(`Package docs failed: ${getError(result)}`);
+    else setStatus('Package docs opened in your browser.');
+  });
+
+  $('#devImportLocalBtn')?.addEventListener('click', async () => {
+    setStatus('Opening local mod import...');
+    const result = await window.quartzAPI.importLocalModFile();
+    if (!isOk(result)) setStatus(`Import failed: ${getError(result)}`);
+    else setStatus('Local mod imported.');
+    loadInstalledMods(true);
   });
 
   $('#installISLBtn')?.addEventListener('click', async () => {
