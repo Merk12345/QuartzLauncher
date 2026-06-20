@@ -420,6 +420,18 @@ function addStyles() {
       resize: vertical;
     }
 
+    .quartz-dev-input,
+    .quartz-dev-input select,
+    #devCreateWizardSelect {
+      background: rgba(255,255,255,0.08);
+      color: #f5f7ff;
+    }
+
+    #devCreateWizardSelect option {
+      background: #1f2430;
+      color: #f5f7ff;
+    }
+
     .quartz-dev-wizard {
       margin-top: 14px;
       padding: 14px;
@@ -1218,7 +1230,8 @@ function bindButtons() {
     step: 0,
     name: '',
     author: '',
-    description: ''
+    description: '',
+    template: 'basic'
   };
 
   const devCreateSteps = [
@@ -1239,6 +1252,12 @@ function bindButtons() {
       label: 'Description',
       placeholder: 'What does your mod do?',
       multiline: true
+    },
+    {
+      key: 'template',
+      label: 'Template Type',
+      placeholder: '',
+      select: true
     }
   ];
 
@@ -1259,6 +1278,9 @@ function bindButtons() {
 
   function getDevWizardInputEl() {
     const step = devCreateSteps[devCreateWizardState.step];
+
+    if (step?.select) return $('#devCreateWizardSelect');
+
     return step?.multiline ? $('#devCreateWizardTextarea') : $('#devCreateWizardInput');
   }
 
@@ -1275,6 +1297,7 @@ function bindButtons() {
     const wizard = $('#devCreateWizard');
     const input = $('#devCreateWizardInput');
     const textarea = $('#devCreateWizardTextarea');
+    const select = $('#devCreateWizardSelect');
     const label = $('#devCreateStepLabel');
     const question = $('#devCreateQuestion');
     const preview = $('#devGeneratedIdPreview');
@@ -1282,19 +1305,20 @@ function bindButtons() {
     const nextBtn = $('#devWizardNextBtn');
     const createBtn = $('#devWizardCreateBtn');
 
-    if (!wizard || !input || !textarea) return;
+    if (!wizard || !input || !textarea || !select) return;
 
     const step = devCreateSteps[devCreateWizardState.step];
 
     if (label) label.textContent = `Step ${devCreateWizardState.step + 1} of ${devCreateSteps.length}`;
     if (question) question.textContent = step.label;
 
-    input.hidden = !!step.multiline;
+    input.hidden = !!step.multiline || !!step.select;
     textarea.hidden = !step.multiline;
+    select.hidden = !step.select;
 
     const activeInput = getDevWizardInputEl();
-    activeInput.value = devCreateWizardState[step.key] || '';
-    activeInput.placeholder = step.placeholder;
+    activeInput.value = devCreateWizardState[step.key] || (step.select ? 'basic' : '');
+    if ('placeholder' in activeInput) activeInput.placeholder = step.placeholder || '';
 
     const nameForId = devCreateWizardState.name || activeInput.value || 'My Quartz Mod';
     if (preview) preview.textContent = `Auto Mod ID: ${devGeneratedIdFromName(nameForId)}`;
@@ -1315,6 +1339,7 @@ function bindButtons() {
     devCreateWizardState.name = '';
     devCreateWizardState.author = '';
     devCreateWizardState.description = '';
+    devCreateWizardState.template = 'basic';
 
     renderDevCreateWizard();
     setStatus('Create New Mod started.');
@@ -1392,6 +1417,11 @@ function bindButtons() {
     renderDevCreateWizard();
   });
 
+  $('#devCreateWizardSelect')?.addEventListener('change', () => {
+    saveDevWizardStep();
+    renderDevCreateWizard();
+  });
+
   $('#devCreateWizardInput')?.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -1401,6 +1431,13 @@ function bindButtons() {
 
   $('#devCreateWizardTextarea')?.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      nextDevWizardStep();
+    }
+  });
+
+  $('#devCreateWizardSelect')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
       event.preventDefault();
       createModFromWizard();
     }
