@@ -1407,7 +1407,19 @@ function bindButtons() {
   $('#devWizardBackBtn')?.addEventListener('click', backDevWizardStep);
   $('#devWizardCreateBtn')?.addEventListener('click', createModFromWizard);
 
-  $('#devCreateWizardInput')?.addEventListener('input', () => {
+  $('#devCreateWizardInput')?.addEventListener('input', event => {
+    const step = devCreateSteps[devCreateWizardState.step];
+
+    if (step?.key === 'name') {
+      const cleaned = event.target.value
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+
+      if (event.target.value !== cleaned) {
+        event.target.value = cleaned;
+      }
+    }
+
     saveDevWizardStep();
     renderDevCreateWizard();
   });
