@@ -1670,6 +1670,7 @@ function bindButtons() {
         'build      Build selected project',
         'validate   Validate selected build',
         'test       Test install selected build',
+        'install    Same as test install',
         'open       Open selected project folder',
         '',
         'Note: this is a controlled Dev Terminal, not a full system shell yet.'
@@ -1713,7 +1714,7 @@ function bindButtons() {
       return;
     }
 
-    if (cmd === 'test') {
+    if (cmd === 'test' || cmd === 'install') {
       const projectName = getSelectedDevProject();
       devTerminalLog(`Test installing selected project${projectName ? `: ${projectName}` : ''}...`);
 
