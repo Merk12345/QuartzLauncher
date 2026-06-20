@@ -300,16 +300,29 @@ function createModCard(mod, mode) {
   `;
 
   card.querySelector('.quartz-install-btn')?.addEventListener('click', async event => {
-    event.currentTarget.disabled = true;
-    event.currentTarget.textContent = 'Installing...';
+    const btn = event.currentTarget;
+    const originalText = btn.textContent || 'Install';
 
-    const result = await window.quartzAPI.installQuartzPackage(id);
+    btn.disabled = true;
+    btn.textContent = 'Installing...';
 
-    if (!isOk(result)) {
-      alert('Install failed:\n' + getError(result));
+    try {
+      const result = await window.quartzAPI.installQuartzPackage(id);
+
+      if (!isOk(result)) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert(`Install failed for ${name}:\n` + getError(result));
+        return;
+      }
+
+      btn.textContent = 'Installed!';
+      await refreshAll();
+    } catch (error) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      alert(`Install crashed for ${name}:\n` + (error.message || error));
     }
-
-    await refreshAll();
   });
 
   card.querySelector('.quartz-uninstall-btn')?.addEventListener('click', async event => {
