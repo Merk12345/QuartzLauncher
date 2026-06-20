@@ -92,6 +92,31 @@ rmrf(outDir);
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(releaseDir, { recursive: true });
 
+const ignoredPaths = [
+  "^/.git($|/)",
+  "^/.github($|/)",
+  "^/backups($|/)",
+  "^/checkpoints($|/)",
+  "^/releases($|/)",
+  "^/tmp($|/)",
+  "^/dist($|/)",
+  "^/out($|/)",
+  "^/build-quartz($|/)",
+  "^/site($|/)",
+  "^/docs($|/)",
+  "^/dev-packages($|/)",
+  "^/templates($|/)",
+  "^/\.vscode($|/)",
+  "^/\.idea($|/)",
+  "^/.*\\.bak$",
+  "^/.*\\.backup.*$",
+  "^/.*\\.broken.*$",
+  "^/.*\\.log$",
+
+  // Keep only Quartz-owned sample packages in packaged builds.
+  "^/assets/packages/(?!HelloQuartz\\.quartz$|HelloQuartzNative\\.quartz$|QuartzNativeTemplate\\.quartz$|itzrealmerk\\.first-native-test\\.quartz$).*\\.quartz(\\..*)?$"
+];
+
 const commonArgs = [
   ".",
   appName,
@@ -100,11 +125,7 @@ const commonArgs = [
   "--overwrite",
   "--asar",
   "--prune=true",
-  "--ignore=^/backups($|/)",
-  "--ignore=^/checkpoints($|/)",
-  "--ignore=^/releases($|/)",
-  "--ignore=^/tmp($|/)",
-  "--ignore=^/.git($|/)"
+  ...ignoredPaths.map((pattern) => `--ignore=${pattern}`)
 ];
 
 run(packagerBin, [
