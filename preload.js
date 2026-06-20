@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('quartzAPI', {
   getModStatus: () => ipcRenderer.invoke('get-mod-status'),
   getQuartzRuntimeStatus: () => ipcRenderer.invoke('get-quartz-runtime-status'),
   syncQuartzRuntime: () => ipcRenderer.invoke('sync-quartz-runtime'),
+  syncGeodeIndex: () => ipcRenderer.invoke('sync-geode-index'),
   openQuartzRuntimeFolder: () => ipcRenderer.invoke('open-quartz-runtime-folder'),
 
   installQuartzPackage: (packageId) => ipcRenderer.invoke('install-quartz-package', packageId),

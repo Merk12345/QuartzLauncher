@@ -2301,6 +2301,68 @@ function qBuildRuntimeManifest() {
 try {
 } catch {}
 
+
+ipcMain.handle('sync-geode-index', async () => {
+  try {
+    const { spawn } = require('child_process');
+
+    const scriptPath = path.join(__dirname, 'tools', 'sync-geode-index-to-quartz.js');
+
+    if (!fs.existsSync(scriptPath)) {
+      return {
+        ok: false,
+        error: `Sync tool not found: ${scriptPath}`
+      };
+    }
+
+    const nodeBin = process.env.npm_node_execpath || 'node';
+
+    const result = await new Promise((resolve) => {
+      const child = spawn(nodeBin, [scriptPath], {
+        cwd: __dirname,
+        env: process.env
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', chunk => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString();
+      });
+
+      child.on('error', error => {
+        resolve({
+          ok: false,
+          error: error.message || String(error),
+          stdout,
+          stderr
+        });
+      });
+
+      child.on('close', code => {
+        resolve({
+          ok: code === 0,
+          code,
+          stdout,
+          stderr,
+          error: code === 0 ? null : (stderr || stdout || `Sync exited with code ${code}`)
+        });
+      });
+    });
+
+    return result;
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message || String(error)
+    };
+  }
+});
+
 ipcMain.handle('sync-quartz-runtime', async () => {
   try {
     return qBuildRuntimeManifest();

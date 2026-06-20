@@ -367,6 +367,45 @@ function createModCard(mod, mode) {
   return card;
 }
 
+async function refreshQuartzIndex(event) {
+  const btn = event?.currentTarget || $('#quartz-refresh-index-btn');
+  const originalText = btn?.textContent || 'Refresh Index';
+
+  if (!window.quartzAPI?.syncGeodeIndex) {
+    alert('Refresh Index is not connected. Restart Quartz and try again.');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+  }
+
+  try {
+    const result = await window.quartzAPI.syncGeodeIndex();
+
+    if (!isOk(result)) {
+      alert('Refresh Index failed:\n' + getError(result));
+      return;
+    }
+
+    state.indexPage = 1;
+    await loadIndex();
+
+    if (result.stdout) {
+      console.log('[Quartz Index Refresh]', result.stdout);
+    }
+  } catch (error) {
+    alert('Refresh Index crashed:\n' + (error.message || error));
+  } finally {
+    if (btn && document.body.contains(btn)) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
+
 function ensureIndexTools() {
   const indexPage = $('#index');
   const grid = $('#indexGrid');
@@ -380,6 +419,7 @@ function ensureIndexTools() {
   tools.className = 'quartz-toolbar';
   tools.innerHTML = `
     <input id="quartz-index-search" class="quartz-search" placeholder="Search Quartz mods..." />
+    <button class="secondary-btn small" id="quartz-refresh-index-btn">Refresh Index</button>
     <button class="secondary-btn small" id="quartz-scan-mods-folder-btn">Scan Mods Folder</button>
     <button class="secondary-btn small" id="quartz-open-mods-folder-btn">Open Mods Folder</button>
   `;
@@ -392,6 +432,7 @@ function ensureIndexTools() {
     renderIndex();
   });
 
+  $('#quartz-refresh-index-btn')?.addEventListener('click', refreshQuartzIndex);
   $('#quartz-scan-mods-folder-btn')?.addEventListener('click', autoScanQuartzModsFolder);
   $('#quartz-open-mods-folder-btn')?.addEventListener('click', openQuartzModsFolder);
 }
