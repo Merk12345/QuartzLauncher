@@ -1,43 +1,5 @@
 [
   {
-    "id": "alphalaneous.creative_mode",
-    "name": "Creative Mode",
-    "developer": "Alphalaneous",
-    "version": "1.2.10",
-    "description": "Gives the Build Tab a cool new interface",
-    "engine": "geode-compat",
-    "category": "editor",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "editor"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 195833,
-    "geodeVersion": "4.5.0",
-    "gameVersion": {
-      "win": "2.2074",
-      "android32": "2.2074",
-      "android64": "2.2074",
-      "mac-intel": "2.2074",
-      "mac-arm": "2.2074",
-      "ios": "2.2074"
-    },
-    "modVersion": "1.2.10",
-    "geodeModId": "alphalaneous.creative_mode",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.creative_mode/versions/1.2.10/download",
-    "geodeHash": "1ac70712c1bf926761949f14030e94f00b5521bc3bb08f9fe9abd7c9c5d9cf5d",
-    "links": {
-      "community": "https://discord.gg/Txn2CA5dHF",
-      "homepage": "https://linktr.ee/Alphalaneous",
-      "source": "https://github.com/Alphalaneous/Creative-Mode"
-    },
-    "updatedAt": "2025-05-28T13:19:14Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
     "id": "zilko.death_animations",
     "name": "Death Animations",
     "developer": "Zilko",
@@ -9410,6 +9372,43 @@
       "source": "https://github.com/TechStudent10/CreationRotation"
     },
     "updatedAt": "2026-03-15T20:09:26Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "alphalaneous.creative_mode",
+    "name": "Creative Mode",
+    "developer": "Alphalaneous",
+    "version": "1.2.10",
+    "description": "Gives the Build Tab a cool new interface",
+    "engine": "geode-compat",
+    "category": "editor",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "editor"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 195833,
+    "geodeVersion": "4.5.0",
+    "gameVersion": {
+      "win": "2.2074",
+      "android32": "2.2074",
+      "android64": "2.2074",
+      "mac-intel": "2.2074",
+      "mac-arm": "2.2074",
+      "ios": "2.2074"
+    },
+    "modVersion": "1.2.10",
+    "geodeModId": "alphalaneous.creative_mode",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/alphalaneous.creative_mode/versions/1.2.10/download",
+    "geodeHash": "1ac70712c1bf926761949f14030e94f00b5521bc3bb08f9fe9abd7c9c5d9cf5d",
+    "links": {
+      "community": "https://discord.gg/Txn2CA5dHF",
+      "homepage": "https://linktr.ee/Alphalaneous",
+      "source": "https://github.com/Alphalaneous/Creative-Mode"
+    },
+    "updatedAt": "2025-05-28T13:19:14Z",
     "installMode": "download-and-wrap-geode"
   },
   {
