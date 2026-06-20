@@ -1,45 +1,5 @@
 [
   {
-    "id": "undefined0.controllable",
-    "name": "Controllable",
-    "developer": "undefined0",
-    "version": "1.0.7",
-    "description": "A mod that improves GD's controller support!",
-    "engine": "geode-compat",
-    "category": "universal",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "universal",
-      "enhancement",
-      "interface"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 17067,
-    "geodeVersion": "4.9.0",
-    "gameVersion": {
-      "win": "2.2074",
-      "android32": null,
-      "android64": null,
-      "mac-intel": null,
-      "mac-arm": null,
-      "ios": null
-    },
-    "modVersion": "1.0.7",
-    "geodeModId": "undefined0.controllable",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/undefined0.controllable/versions/1.0.7/download",
-    "geodeHash": "e6250d725fa76544e5fe8ccb1cc02fda7fb1a5464090a070518fd7210f19a8e7",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/undefined06855/Controllable"
-    },
-    "updatedAt": "2025-11-17T21:49:24Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
     "id": "techstudent10.creation_rotation",
     "name": "Creation Rotation",
     "developer": "underscored, limegradient, prevter, capeling",
@@ -9111,6 +9071,45 @@
     "geodeHash": "94c9989b882b1a1bba59e624a64ab22fcf2f86ad8c7f91cd1765fda96ed90e5d",
     "links": {},
     "updatedAt": "2024-08-29T08:20:40Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "undefined0.controllable",
+    "name": "Controllable",
+    "developer": "undefined0",
+    "version": "1.0.7",
+    "description": "A mod that improves GD's controller support!",
+    "engine": "geode-compat",
+    "category": "universal",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "universal",
+      "enhancement",
+      "interface"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 17067,
+    "geodeVersion": "4.9.0",
+    "gameVersion": {
+      "win": "2.2074",
+      "android32": null,
+      "android64": null,
+      "mac-intel": null,
+      "mac-arm": null,
+      "ios": null
+    },
+    "modVersion": "1.0.7",
+    "geodeModId": "undefined0.controllable",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/undefined0.controllable/versions/1.0.7/download",
+    "geodeHash": "e6250d725fa76544e5fe8ccb1cc02fda7fb1a5464090a070518fd7210f19a8e7",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/undefined06855/Controllable"
+    },
+    "updatedAt": "2025-11-17T21:49:24Z",
     "installMode": "download-and-wrap-geode"
   },
   {
