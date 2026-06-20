@@ -1,0 +1,21 @@
+[
+  {
+    "id": "local.publish-test-20260620202709",
+    "name": "Publish Test Mod 20260620202709",
+    "developer": "Quartz Staff Test",
+    "version": "0.1.0",
+    "description": "A harmless test mod for testing Quartz Staff Review approve and publish flow.",
+    "engine": "quartz-native",
+    "category": "Utility",
+    "tags": [
+      "Quartz Native",
+      "Test"
+    ],
+    "source": "quartz-approved",
+    "sourceType": "local-quartz",
+    "packagePath": "assets/packages/local.publish-test-20260620202709-0.1.0.quartz",
+    "installMode": "local-quartz-package",
+    "approved": true,
+    "approvedAt": "2026-06-20T20:27:35.786Z"
+  }
+]
