@@ -79,6 +79,8 @@ function isISLInstalled() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    fullscreen: true,
+    autoHideMenuBar: true,
     width: 1200,
     height: 760,
     minWidth: 900,
