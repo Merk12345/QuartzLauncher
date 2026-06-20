@@ -506,6 +506,83 @@ function addStyles() {
       font-size: 12px;
     }
 
+    .quartz-dev-terminal-card {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-dev-terminal-note {
+      margin: 0 0 12px;
+      opacity: 0.82;
+      line-height: 1.4;
+    }
+
+    .quartz-dev-terminal-layout {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .quartz-dev-command-buttons {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .quartz-dev-command-buttons button {
+      width: 100%;
+      text-align: left;
+    }
+
+    .quartz-dev-terminal-main {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .quartz-dev-terminal-output {
+      min-height: 220px;
+      max-height: 360px;
+      overflow: auto;
+      white-space: pre-wrap;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.34);
+      border: 1px solid rgba(255,255,255,0.1);
+      line-height: 1.45;
+      font-size: 12px;
+    }
+
+    .quartz-dev-terminal-input-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .quartz-dev-terminal-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: inherit;
+      font: inherit;
+    }
+
+    @media (max-width: 850px) {
+      .quartz-dev-terminal-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .quartz-dev-command-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     .quartz-links {
       display: flex;
       flex-direction: column;
@@ -1547,6 +1624,105 @@ function bindButtons() {
     } catch (_error) {
       setStatus('Could not copy package path.');
     }
+  });
+
+  function devTerminalLog(message) {
+    const out = $('#devTerminalOutput');
+    if (!out) return;
+
+    const current = out.textContent || '';
+    const text = current && current !== 'Quartz Dev Terminal ready. Type help to see commands.'
+      ? `${current}\n\n${message}`
+      : message;
+
+    out.textContent = text;
+    out.scrollTop = out.scrollHeight;
+  }
+
+  async function runDevTerminalCommand(command) {
+    const raw = String(command || '').trim();
+    const cmd = raw.toLowerCase();
+
+    if (!cmd) return;
+
+    devTerminalLog(`> ${raw}`);
+
+    if (cmd === 'help') {
+      devTerminalLog([
+        'Available safe commands:',
+        '',
+        'help       Show this command list',
+        'ls         List files in the selected project',
+        'tree       Show project folder tree',
+        'manifest   Show quartz.json',
+        'check      Check starter JS syntax',
+        'run        Run starter JS',
+        'build      Build selected project',
+        'validate   Validate selected build',
+        'test       Test install selected build',
+        'open       Open selected project folder',
+        '',
+        'Note: this is a controlled Dev Terminal, not a full system shell yet.'
+      ].join('\n'));
+      return;
+    }
+
+    if (cmd === 'build') {
+      $('#devBuildPackageBtn')?.click();
+      devTerminalLog('Running build through Dev Tools...');
+      return;
+    }
+
+    if (cmd === 'validate') {
+      $('#devValidatePackageBtn')?.click();
+      devTerminalLog('Running validation through Dev Tools...');
+      return;
+    }
+
+    if (cmd === 'test') {
+      $('#devImportLocalBtn')?.click();
+      devTerminalLog('Running test install through Dev Tools...');
+      return;
+    }
+
+    if (cmd === 'open') {
+      $('#devOpenProjectBtn')?.click();
+      devTerminalLog('Opening selected project through Dev Tools...');
+      return;
+    }
+
+    devTerminalLog(`Command "${raw}" is not wired yet. Backend command support is next.`);
+  }
+
+  $('.dev-command-btn')?.addEventListener?.('click', () => {});
+
+  $all('.dev-command-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      runDevTerminalCommand(button.dataset.devCommand || '');
+    });
+  });
+
+  $('#devTerminalRunBtn')?.addEventListener('click', () => {
+    const input = $('#devTerminalInput');
+    const command = input?.value || '';
+    if (input) input.value = '';
+    runDevTerminalCommand(command);
+  });
+
+  $('#devTerminalInput')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const input = event.target;
+      const command = input.value || '';
+      input.value = '';
+      runDevTerminalCommand(command);
+    }
+  });
+
+  $('#devTerminalClearBtn')?.addEventListener('click', () => {
+    const out = $('#devTerminalOutput');
+    if (out) out.textContent = 'Quartz Dev Terminal ready. Type help to see commands.';
+    setStatus('Dev Terminal cleared.');
   });
 
   $('#devClearConsoleBtn')?.addEventListener('click', () => {

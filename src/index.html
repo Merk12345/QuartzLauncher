@@ -211,6 +211,44 @@
           </div>
           <pre id="devConsole" class="quartz-dev-console">Quartz Dev Console ready.</pre>
         </div>
+
+        <div class="quartz-dev-terminal-card">
+          <div class="quartz-dev-console-header">
+            <h3>Dev Terminal</h3>
+            <div>
+              <button id="devTerminalClearBtn" class="small-btn">Clear Terminal</button>
+            </div>
+          </div>
+
+          <p class="quartz-dev-terminal-note">
+            Safe command center for the selected project. Use the buttons or type a command.
+          </p>
+
+          <div class="quartz-dev-terminal-layout">
+            <div class="quartz-dev-command-buttons">
+              <button class="small-btn dev-command-btn" data-dev-command="help">Help</button>
+              <button class="small-btn dev-command-btn" data-dev-command="ls">List Files</button>
+              <button class="small-btn dev-command-btn" data-dev-command="tree">Project Tree</button>
+              <button class="small-btn dev-command-btn" data-dev-command="manifest">Show Manifest</button>
+              <button class="small-btn dev-command-btn" data-dev-command="check">Check JS Syntax</button>
+              <button class="small-btn dev-command-btn" data-dev-command="run">Run Starter JS</button>
+              <button class="small-btn dev-command-btn" data-dev-command="build">Build Selected</button>
+              <button class="small-btn dev-command-btn" data-dev-command="validate">Validate Selected</button>
+              <button class="small-btn dev-command-btn" data-dev-command="test">Test Install</button>
+              <button class="small-btn dev-command-btn" data-dev-command="open">Open Project</button>
+            </div>
+
+            <div class="quartz-dev-terminal-main">
+              <pre id="devTerminalOutput" class="quartz-dev-terminal-output">Quartz Dev Terminal ready. Type help to see commands.</pre>
+
+              <div class="quartz-dev-terminal-input-row">
+                <span>&gt;</span>
+                <input id="devTerminalInput" class="quartz-dev-terminal-input" type="text" placeholder="help, ls, tree, manifest, check, run, build, validate, test" />
+                <button id="devTerminalRunBtn" class="small-btn">Run</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
 
