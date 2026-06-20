@@ -141,10 +141,31 @@
             <button id="devOpenWorkspaceBtn" class="secondary-btn">Open Workspace</button>
           </div>
 
-          <div class="quartz-dev-card">
+          <div class="quartz-dev-card quartz-dev-create-card">
             <h3>🧰 Create New Mod</h3>
-            <p>Create a beginner-friendly Quartz-native starter mod with a manifest, payload, README, and changelog.</p>
-            <button id="devCreateTemplateBtn" class="secondary-btn">Create Starter Mod</button>
+            <p>Create a new Quartz-native starter mod with a guided setup.</p>
+
+            <button id="devStartCreateWizardBtn" class="secondary-btn">Create New Mod</button>
+
+            <div id="devCreateWizard" class="quartz-dev-wizard" hidden>
+              <div class="quartz-dev-wizard-head">
+                <span id="devCreateStepLabel">Step 1 of 3</span>
+                <strong id="devCreateQuestion">Mod Name</strong>
+              </div>
+
+              <input id="devCreateWizardInput" class="quartz-dev-input" type="text" />
+              <textarea id="devCreateWizardTextarea" class="quartz-dev-input quartz-dev-textarea" hidden></textarea>
+
+              <div id="devGeneratedIdPreview" class="quartz-dev-id-preview">
+                Mod ID: local.my-quartz-mod
+              </div>
+
+              <div class="quartz-dev-wizard-actions">
+                <button id="devWizardBackBtn" class="small-btn">Back</button>
+                <button id="devWizardNextBtn" class="small-btn">Next</button>
+                <button id="devWizardCreateBtn" class="small-btn" hidden>Create Mod</button>
+              </div>
+            </div>
           </div>
 
           <div class="quartz-dev-card">

@@ -381,6 +381,79 @@ function addStyles() {
       opacity: 0.9;
     }
 
+    .quartz-dev-form {
+      display: grid;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .quartz-dev-form label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      opacity: 0.92;
+    }
+
+    .quartz-dev-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: inherit;
+      font: inherit;
+    }
+
+    .quartz-dev-input::placeholder {
+      color: rgba(255,255,255,0.45);
+    }
+
+    .quartz-dev-textarea {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    .quartz-dev-wizard {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .quartz-dev-wizard-head {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .quartz-dev-wizard-head span {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .quartz-dev-wizard-head strong {
+      font-size: 16px;
+    }
+
+    .quartz-dev-id-preview {
+      margin-top: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      opacity: 0.88;
+      word-break: break-word;
+    }
+
+    .quartz-dev-wizard-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .quartz-dev-console-card {
       margin-top: 16px;
       padding: 16px;
@@ -1134,20 +1207,195 @@ function bindButtons() {
     else setStatus('Dev workspace opened.');
   });
 
-  $('#devCreateTemplateBtn')?.addEventListener('click', async () => {
+  const devCreateWizardState = {
+    step: 0,
+    name: '',
+    author: '',
+    description: ''
+  };
+
+  const devCreateSteps = [
+    {
+      key: 'name',
+      label: 'Mod Name',
+      placeholder: 'Example: Test Button Mod',
+      multiline: false
+    },
+    {
+      key: 'author',
+      label: 'Author',
+      placeholder: 'Example: itzrealmerk',
+      multiline: false
+    },
+    {
+      key: 'description',
+      label: 'Description',
+      placeholder: 'What does your mod do?',
+      multiline: true
+    }
+  ];
+
+  function devSlugFromName(value) {
+    const slug = String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50);
+
+    return slug || 'my-quartz-mod';
+  }
+
+  function devGeneratedIdFromName(name) {
+    return `local.${devSlugFromName(name)}`;
+  }
+
+  function getDevWizardInputEl() {
+    const step = devCreateSteps[devCreateWizardState.step];
+    return step?.multiline ? $('#devCreateWizardTextarea') : $('#devCreateWizardInput');
+  }
+
+  function saveDevWizardStep() {
+    const step = devCreateSteps[devCreateWizardState.step];
+    const input = getDevWizardInputEl();
+
+    if (!step || !input) return;
+
+    devCreateWizardState[step.key] = input.value.trim();
+  }
+
+  function renderDevCreateWizard() {
+    const wizard = $('#devCreateWizard');
+    const input = $('#devCreateWizardInput');
+    const textarea = $('#devCreateWizardTextarea');
+    const label = $('#devCreateStepLabel');
+    const question = $('#devCreateQuestion');
+    const preview = $('#devGeneratedIdPreview');
+    const backBtn = $('#devWizardBackBtn');
+    const nextBtn = $('#devWizardNextBtn');
+    const createBtn = $('#devWizardCreateBtn');
+
+    if (!wizard || !input || !textarea) return;
+
+    const step = devCreateSteps[devCreateWizardState.step];
+
+    if (label) label.textContent = `Step ${devCreateWizardState.step + 1} of ${devCreateSteps.length}`;
+    if (question) question.textContent = step.label;
+
+    input.hidden = !!step.multiline;
+    textarea.hidden = !step.multiline;
+
+    const activeInput = getDevWizardInputEl();
+    activeInput.value = devCreateWizardState[step.key] || '';
+    activeInput.placeholder = step.placeholder;
+
+    const nameForId = devCreateWizardState.name || activeInput.value || 'My Quartz Mod';
+    if (preview) preview.textContent = `Auto Mod ID: ${devGeneratedIdFromName(nameForId)}`;
+
+    if (backBtn) backBtn.disabled = devCreateWizardState.step === 0;
+    if (nextBtn) nextBtn.hidden = devCreateWizardState.step === devCreateSteps.length - 1;
+    if (createBtn) createBtn.hidden = devCreateWizardState.step !== devCreateSteps.length - 1;
+
+    setTimeout(() => activeInput.focus(), 50);
+  }
+
+  function openDevCreateWizard() {
+    const wizard = $('#devCreateWizard');
+    if (!wizard) return;
+
+    wizard.hidden = false;
+    devCreateWizardState.step = 0;
+    devCreateWizardState.name = '';
+    devCreateWizardState.author = '';
+    devCreateWizardState.description = '';
+
+    renderDevCreateWizard();
+    setStatus('Create New Mod started.');
+    devLog('Create New Mod wizard opened.');
+  }
+
+  function nextDevWizardStep() {
+    saveDevWizardStep();
+
+    if (devCreateWizardState.step < devCreateSteps.length - 1) {
+      devCreateWizardState.step += 1;
+      renderDevCreateWizard();
+    }
+  }
+
+  function backDevWizardStep() {
+    saveDevWizardStep();
+
+    if (devCreateWizardState.step > 0) {
+      devCreateWizardState.step -= 1;
+      renderDevCreateWizard();
+    }
+  }
+
+  async function createModFromWizard() {
+    saveDevWizardStep();
+
+    const name = devCreateWizardState.name || 'My Quartz Mod';
+    const options = {
+      name,
+      id: devGeneratedIdFromName(name),
+      author: devCreateWizardState.author || 'YourName',
+      description: devCreateWizardState.description || 'A starter Quartz-native mod.',
+      template: 'basic'
+    };
+
     setStatus('Creating starter mod...');
-    devLog('Creating starter Quartz mod...');
-    const result = await window.quartzAPI.devCreateTemplate();
+    devLog('Creating starter Quartz mod...', options);
+
+    const result = await window.quartzAPI.devCreateTemplate(options);
+
     devLog(isOk(result) ? 'Starter mod created.' : 'Starter mod failed.', summarizeDevResult(result));
-    if (!isOk(result)) setStatus(`Create mod failed: ${getError(result)}`);
-    else {
-      setStatus('Starter mod created.');
-      await refreshDevProjects();
-      if (result.modDir) {
-        const createdName = result.modDir.split('/').pop();
-        state.selectedDevProject = createdName;
-        renderDevProjects();
-      }
+
+    if (!isOk(result)) {
+      setStatus(`Create mod failed: ${getError(result)}`);
+      return;
+    }
+
+    setStatus('Starter mod created.');
+
+    const wizard = $('#devCreateWizard');
+    if (wizard) wizard.hidden = true;
+
+    await refreshDevProjects();
+
+    if (result.modDir) {
+      const createdName = result.modDir.split('/').pop();
+      state.selectedDevProject = createdName;
+      renderDevProjects();
+    }
+  }
+
+  $('#devStartCreateWizardBtn')?.addEventListener('click', openDevCreateWizard);
+  $('#devWizardNextBtn')?.addEventListener('click', nextDevWizardStep);
+  $('#devWizardBackBtn')?.addEventListener('click', backDevWizardStep);
+  $('#devWizardCreateBtn')?.addEventListener('click', createModFromWizard);
+
+  $('#devCreateWizardInput')?.addEventListener('input', () => {
+    saveDevWizardStep();
+    renderDevCreateWizard();
+  });
+
+  $('#devCreateWizardTextarea')?.addEventListener('input', () => {
+    saveDevWizardStep();
+    renderDevCreateWizard();
+  });
+
+  $('#devCreateWizardInput')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      nextDevWizardStep();
+    }
+  });
+
+  $('#devCreateWizardTextarea')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      createModFromWizard();
     }
   });
 
