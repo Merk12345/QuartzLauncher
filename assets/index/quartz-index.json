@@ -1,47 +1,5 @@
 [
   {
-    "id": "minemaker0430.gddp_integration",
-    "name": "GDDP - Demon Progression",
-    "developer": "ItsMochaTheOtter",
-    "version": "1.1.13",
-    "description": "Adds various utilities for Demon Progression",
-    "engine": "geode-compat",
-    "category": "gameplay",
-    "tags": [
-      "Geode",
-      "Geode Compatibility",
-      "gameplay",
-      "online",
-      "interface",
-      "utility",
-      "content"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 4515130,
-    "geodeVersion": "5.7.1",
-    "gameVersion": {
-      "win": "2.2081",
-      "android32": "2.2081",
-      "android64": "2.2081",
-      "mac-intel": "2.2081",
-      "mac-arm": "2.2081",
-      "ios": "2.2081"
-    },
-    "modVersion": "1.1.13",
-    "geodeModId": "minemaker0430.gddp_integration",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/minemaker0430.gddp_integration/versions/1.1.13/download",
-    "geodeHash": "c746a4461a948c2d739a93a46a50f1c74c22e63de1f514c496db8327c2d3116d",
-    "links": {
-      "community": null,
-      "homepage": null,
-      "source": "https://github.com/Minemaker0430/GDDPIntegration/"
-    },
-    "updatedAt": "2026-06-02T21:52:20Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
     "id": "techstudent10.gdguesser",
     "name": "GDGuesser",
     "developer": "underscored",
@@ -15256,6 +15214,47 @@
       "source": "https://github.com/B1rtek/Geode-GDDLIntegration"
     },
     "updatedAt": "2026-03-30T20:04:56Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "minemaker0430.gddp_integration",
+    "name": "GDDP - Demon Progression",
+    "developer": "ItsMochaTheOtter",
+    "version": "1.1.13",
+    "description": "Adds various utilities for Demon Progression",
+    "engine": "geode-compat",
+    "category": "gameplay",
+    "tags": [
+      "Geode",
+      "Geode Compatibility",
+      "gameplay",
+      "online",
+      "interface",
+      "utility",
+      "content"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 4515130,
+    "geodeVersion": "5.7.1",
+    "gameVersion": {
+      "win": "2.2081",
+      "android32": "2.2081",
+      "android64": "2.2081",
+      "mac-intel": "2.2081",
+      "mac-arm": "2.2081",
+      "ios": "2.2081"
+    },
+    "modVersion": "1.1.13",
+    "geodeModId": "minemaker0430.gddp_integration",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/minemaker0430.gddp_integration/versions/1.1.13/download",
+    "geodeHash": "c746a4461a948c2d739a93a46a50f1c74c22e63de1f514c496db8327c2d3116d",
+    "links": {
+      "community": null,
+      "homepage": null,
+      "source": "https://github.com/Minemaker0430/GDDPIntegration/"
+    },
+    "updatedAt": "2026-06-02T21:52:20Z",
     "installMode": "download-and-wrap-geode"
   },
   {
