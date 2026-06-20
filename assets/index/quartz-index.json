@@ -1,38 +1,5 @@
 [
   {
-    "id": "capeling.geometry-dash-lunar",
-    "name": "Geometry Dash: Lunar",
-    "developer": "capeling",
-    "version": "2.0.6",
-    "description": "Geode compatibility package.",
-    "engine": "geode-compat",
-    "category": "Geode",
-    "tags": [
-      "Geode",
-      "Geode Compatibility"
-    ],
-    "source": "geode-index",
-    "sourceType": "remote-geode",
-    "featured": true,
-    "downloadCount": 241309,
-    "geodeVersion": "4.2.0",
-    "gameVersion": {
-      "win": "2.2074",
-      "android32": "2.2074",
-      "android64": "2.2074",
-      "mac-intel": null,
-      "mac-arm": null,
-      "ios": null
-    },
-    "modVersion": "2.0.6",
-    "geodeModId": "capeling.geometry-dash-lunar",
-    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/capeling.geometry-dash-lunar/versions/2.0.6/download",
-    "geodeHash": "1aa432d54ed1104bf61aa48c65c46318b760591386124d38fff9869b8c2fc22f",
-    "links": {},
-    "updatedAt": "2025-01-21T12:53:20Z",
-    "installMode": "download-and-wrap-geode"
-  },
-  {
     "id": "teamtcm.geometry-dash-odyssey",
     "name": "Geometry Dash: Odyssey",
     "developer": "chumiu",
@@ -16069,6 +16036,38 @@
       "source": null
     },
     "updatedAt": "2026-02-23T21:28:26Z",
+    "installMode": "download-and-wrap-geode"
+  },
+  {
+    "id": "capeling.geometry-dash-lunar",
+    "name": "Geometry Dash: Lunar",
+    "developer": "capeling",
+    "version": "2.0.6",
+    "description": "Geode compatibility package.",
+    "engine": "geode-compat",
+    "category": "Geode",
+    "tags": [
+      "Geode",
+      "Geode Compatibility"
+    ],
+    "source": "geode-index",
+    "sourceType": "remote-geode",
+    "downloadCount": 241309,
+    "geodeVersion": "4.2.0",
+    "gameVersion": {
+      "win": "2.2074",
+      "android32": "2.2074",
+      "android64": "2.2074",
+      "mac-intel": null,
+      "mac-arm": null,
+      "ios": null
+    },
+    "modVersion": "2.0.6",
+    "geodeModId": "capeling.geometry-dash-lunar",
+    "geodeDownloadUrl": "https://api.geode-sdk.org/v1/mods/capeling.geometry-dash-lunar/versions/2.0.6/download",
+    "geodeHash": "1aa432d54ed1104bf61aa48c65c46318b760591386124d38fff9869b8c2fc22f",
+    "links": {},
+    "updatedAt": "2025-01-21T12:53:20Z",
     "installMode": "download-and-wrap-geode"
   },
   {
