@@ -3784,7 +3784,11 @@ try {
 
 ipcMain.handle('get-quartz-index', async (event, options = {}) => {
   try {
-    const allMods = qAvailableModsWithEnabledState();
+    const indexListResult = await qListAvailableQuartzPackagesForIndexDisplay();
+    const allMods = indexListResult.mods.map(mod => ({
+      ...mod,
+      enabled: mod.installed ? qIsQuartzModEnabled(mod.id) : false
+    }));
     const installedMods = allMods.filter(mod => mod.installed);
     const availableMods = allMods.filter(mod => !mod.installed);
 
@@ -3807,7 +3811,10 @@ ipcMain.handle('get-quartz-index', async (event, options = {}) => {
           allCount: allMods.length,
           installedCount: installedMods.length,
           availableCount: availableMods.length,
-          allInstalled: allMods.length > 0 && availableMods.length === 0
+          allInstalled: allMods.length > 0 && availableMods.length === 0,
+          source: indexListResult.source || paged.meta.source,
+          liveIndexUrl: QUARTZ_PUBLIC_INDEX_URL,
+          fallbackError: indexListResult.error || null
         }
       }
     };
@@ -4313,6 +4320,81 @@ app.whenReady().then(() => {
 // This override lets the Index show local Quartz packages AND remote Geode compatibility entries.
 // Remote entries are displayed in the Index now. Install/download wrapping is wired in a later patch.
 
+const QUARTZ_PUBLIC_SITE_BASE_URL = 'https://quartz-launcher.pages.dev';
+const QUARTZ_PUBLIC_INDEX_URL = `${QUARTZ_PUBLIC_SITE_BASE_URL}/assets/index/quartz-index.json`;
+
+function qExtractQuartzIndexEntries(raw) {
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+
+  if (Array.isArray(raw?.packages)) {
+    return raw.packages;
+  }
+
+  if (Array.isArray(raw?.mods)) {
+    return raw.mods;
+  }
+
+  return [];
+}
+
+function qFetchText(url, timeoutMs = 8000, redirectsLeft = 3) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+
+    try {
+      parsed = new URL(url);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const client = parsed.protocol === 'http:' ? require('http') : require('https');
+
+    const request = client.get(parsed, {
+      headers: {
+        'Accept': 'application/json,text/plain,*/*',
+        'User-Agent': 'QuartzLauncher'
+      }
+    }, response => {
+      const statusCode = Number(response.statusCode || 0);
+      const location = response.headers.location;
+
+      if (statusCode >= 300 && statusCode < 400 && location && redirectsLeft > 0) {
+        response.resume();
+        const nextUrl = new URL(location, parsed).toString();
+        qFetchText(nextUrl, timeoutMs, redirectsLeft - 1).then(resolve, reject);
+        return;
+      }
+
+      if (statusCode < 200 || statusCode >= 300) {
+        response.resume();
+        reject(new Error(`HTTP ${statusCode}`));
+        return;
+      }
+
+      response.setEncoding('utf8');
+
+      let body = '';
+
+      response.on('data', chunk => {
+        body += chunk;
+      });
+
+      response.on('end', () => {
+        resolve(body);
+      });
+    });
+
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(new Error(`Timed out after ${timeoutMs}ms`));
+    });
+
+    request.on('error', reject);
+  });
+}
+
 function qLoadQuartzIndexEntriesForDisplay() {
   const indexPath = path.join(__dirname, 'assets', 'index', 'quartz-index.json');
 
@@ -4323,33 +4405,86 @@ function qLoadQuartzIndexEntriesForDisplay() {
   try {
     const raw = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
 
-    if (Array.isArray(raw)) {
-      return raw;
-    }
-
-    if (Array.isArray(raw.packages)) {
-      return raw.packages;
-    }
-
-    if (Array.isArray(raw.mods)) {
-      return raw.mods;
-    }
-
-    return [];
+    return qExtractQuartzIndexEntries(raw).map(entry => ({
+      ...entry,
+      indexSource: entry.indexSource || 'local'
+    }));
   } catch (error) {
     console.warn('Failed to read Quartz index:', error.message);
     return [];
   }
 }
 
-function qResolveLocalQuartzIndexPackagePath(entry) {
-  const rawPath =
+async function qLoadQuartzIndexEntriesForDisplayAsync() {
+  try {
+    const text = await qFetchText(QUARTZ_PUBLIC_INDEX_URL);
+    const raw = JSON.parse(text);
+    const entries = qExtractQuartzIndexEntries(raw).map(entry => ({
+      ...entry,
+      indexSource: 'website',
+      indexBaseUrl: QUARTZ_PUBLIC_SITE_BASE_URL
+    }));
+
+    return {
+      entries,
+      source: 'website',
+      error: null
+    };
+  } catch (error) {
+    const entries = qLoadQuartzIndexEntriesForDisplay();
+
+    return {
+      entries,
+      source: 'local-fallback',
+      error: error.message || String(error)
+    };
+  }
+}
+
+function qGetQuartzIndexPackageRawPath(entry) {
+  return (
     entry.packagePath ||
     entry.path ||
     entry.filePath ||
-    entry.sourcePath;
+    entry.sourcePath ||
+    null
+  );
+}
+
+function qResolveQuartzIndexPackageUrl(entry) {
+  const rawPath = qGetQuartzIndexPackageRawPath(entry);
+
+  if (entry.packageUrl || entry.downloadUrl) {
+    return entry.packageUrl || entry.downloadUrl;
+  }
 
   if (!rawPath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(rawPath)) {
+    return rawPath;
+  }
+
+  if (entry.indexSource === 'website') {
+    return new URL(String(rawPath).replace(/^\/+/, ''), `${QUARTZ_PUBLIC_SITE_BASE_URL}/`).toString();
+  }
+
+  return null;
+}
+
+function qResolveLocalQuartzIndexPackagePath(entry) {
+  const rawPath = qGetQuartzIndexPackageRawPath(entry);
+
+  if (!rawPath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(rawPath)) {
+    return null;
+  }
+
+  if (entry.indexSource === 'website') {
     return null;
   }
 
@@ -4380,6 +4515,10 @@ function qNormalizeQuartzIndexEntryForDisplay(entry) {
     ? null
     : qResolveLocalQuartzIndexPackagePath(entry);
 
+  const packageUrl = isRemoteGeode
+    ? entry.geodeDownloadUrl || entry.downloadUrl || null
+    : qResolveQuartzIndexPackageUrl(entry);
+
   const installed = fs.existsSync(qLibraryPackagePath(id));
 
   return {
@@ -4400,14 +4539,53 @@ function qNormalizeQuartzIndexEntryForDisplay(entry) {
     geodeHash: entry.geodeHash || null,
     downloadCount: entry.downloadCount || 0,
     featured: !!entry.featured,
+    featuredRank: Number.isFinite(Number(entry.featuredRank)) ? Number(entry.featuredRank) : null,
+    featuredAt: entry.featuredAt || null,
     gameVersion: entry.gameVersion || null,
     geodeVersion: entry.geodeVersion || null,
     links: entry.links || {},
     updatedAt: entry.updatedAt || null,
+    indexSource: entry.indexSource || 'local',
     packagePath,
+    packageUrl,
     installed,
     enabled: installed ? qIsQuartzModEnabled(id) : false
   };
+}
+
+function qSortQuartzIndexModsForDisplay(mods) {
+  return [...mods].sort((a, b) => {
+    const aFeatured = !!a.featured;
+    const bFeatured = !!b.featured;
+
+    if (aFeatured !== bFeatured) {
+      return aFeatured ? -1 : 1;
+    }
+
+    if (aFeatured && bFeatured) {
+      const aRank = Number.isFinite(Number(a.featuredRank)) ? Number(a.featuredRank) : 999999;
+      const bRank = Number.isFinite(Number(b.featuredRank)) ? Number(b.featuredRank) : 999999;
+
+      if (aRank !== bRank) {
+        return aRank - bRank;
+      }
+    }
+
+    return String(a.name || a.id).localeCompare(String(b.name || b.id));
+  });
+}
+
+function qUniqueQuartzIndexMods(mods) {
+  const seen = new Set();
+  const unique = [];
+
+  for (const mod of mods) {
+    if (seen.has(mod.id)) continue;
+    seen.add(mod.id);
+    unique.push(mod);
+  }
+
+  return unique;
 }
 
 function qListAvailableQuartzPackages() {
@@ -4419,13 +4597,23 @@ function qListAvailableQuartzPackages() {
     .map(qNormalizeQuartzIndexEntryForDisplay)
     .filter(Boolean);
 
-  const seen = new Set();
+  return qSortQuartzIndexModsForDisplay(qUniqueQuartzIndexMods(mods));
+}
 
-  return mods.filter((mod) => {
-    if (seen.has(mod.id)) return false;
-    seen.add(mod.id);
-    return true;
-  });
+async function qListAvailableQuartzPackagesForIndexDisplay() {
+  qEnsureEnableFolders();
+
+  const result = await qLoadQuartzIndexEntriesForDisplayAsync();
+
+  const mods = result.entries
+    .map(qNormalizeQuartzIndexEntryForDisplay)
+    .filter(Boolean);
+
+  return {
+    mods: qSortQuartzIndexModsForDisplay(qUniqueQuartzIndexMods(mods)),
+    source: result.source,
+    error: result.error
+  };
 }
 
 function qFindAvailableQuartzPackage(packageId) {

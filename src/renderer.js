@@ -5,6 +5,7 @@ const state = {
   installedMods: [],
   indexSearch: '',
   indexPage: 1,
+  selectedIndexModIds: new Set(),
   installedPage: 1,
   pageSize: 12,
   devProjects: [],
@@ -201,6 +202,41 @@ function addStyles() {
       margin: 14px 0;
     }
 
+    .quartz-selected-count {
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .quartz-index-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .quartz-index-select input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .quartz-card.quartz-selected-card {
+      border-color: rgba(102, 217, 255, 0.75);
+      box-shadow: 0 0 0 1px rgba(102, 217, 255, 0.35), 0 16px 36px rgba(102, 217, 255, 0.10);
+    }
+
+
     .quartz-search {
       min-width: 260px;
       flex: 1;
@@ -235,6 +271,23 @@ function addStyles() {
       box-shadow: 0 12px 30px rgba(0,0,0,0.18);
     }
 
+    .quartz-card.quartz-featured-card {
+      border-color: rgba(255, 214, 10, 0.85);
+      box-shadow: 0 0 0 1px rgba(255, 214, 10, 0.35), 0 16px 36px rgba(255, 214, 10, 0.10);
+    }
+
+    .quartz-featured-star {
+      color: #ffd60a;
+      text-shadow: 0 0 10px rgba(255, 214, 10, 0.45);
+    }
+
+    .quartz-pill.quartz-featured-pill {
+      border-color: rgba(255, 214, 10, 0.7);
+      background: rgba(255, 214, 10, 0.14);
+      color: #ffe484;
+      font-weight: 700;
+    }
+
     .quartz-card h3 {
       margin: 0 0 8px;
       font-size: 17px;
@@ -251,6 +304,20 @@ function addStyles() {
       gap: 6px;
       flex-wrap: wrap;
       margin: 10px 0;
+    }
+
+
+    .quartz-tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0;
+    }
+
+    .quartz-pill.quartz-tag-pill {
+      background: rgba(102,217,255,0.10);
+      border-color: rgba(102,217,255,0.20);
+      color: rgba(245,247,255,0.92);
     }
 
     .quartz-pill {
@@ -777,6 +844,150 @@ function filterAndPage(mods, search, page) {
   };
 }
 
+function getFilteredIndexModsForSelection() {
+  const query = String(state.indexSearch || '').trim().toLowerCase();
+
+  if (!query) return [...state.indexMods];
+
+  return state.indexMods.filter(mod => {
+    const haystack = [
+      getModId(mod),
+      getModName(mod),
+      mod.description,
+      mod.developer,
+      mod.author,
+      mod.category,
+      mod.engine,
+      ...(Array.isArray(mod.tags) ? mod.tags : [])
+    ].join(' ').toLowerCase();
+
+    return haystack.includes(query);
+  });
+}
+
+function getShownIndexModsForSelection() {
+  return filterAndPage(state.indexMods, state.indexSearch, state.indexPage).mods;
+}
+
+function pruneSelectedIndexMods() {
+  const availableIds = new Set(state.indexMods.map(getModId));
+  state.selectedIndexModIds = new Set(
+    [...state.selectedIndexModIds].filter(id => availableIds.has(id))
+  );
+}
+
+function getSelectedIndexModIds() {
+  pruneSelectedIndexMods();
+  return [...state.selectedIndexModIds];
+}
+
+function updateIndexBulkUi() {
+  const ids = getSelectedIndexModIds();
+  const count = $('#quartz-index-selected-count');
+
+  if (count) {
+    count.textContent = `${ids.length} selected`;
+  }
+
+  const disabled = ids.length === 0;
+  $('#quartz-clear-selected-index-btn')?.toggleAttribute('disabled', disabled);
+  $('#quartz-install-selected-index-btn')?.toggleAttribute('disabled', disabled);
+}
+
+function setIndexModSelected(id, selected) {
+  if (!id) return;
+
+  if (selected) {
+    state.selectedIndexModIds.add(String(id));
+  } else {
+    state.selectedIndexModIds.delete(String(id));
+  }
+
+  updateIndexBulkUi();
+}
+
+function selectShownIndexMods() {
+  const shown = getShownIndexModsForSelection();
+
+  shown.forEach(mod => {
+    const id = getModId(mod);
+    if (id) state.selectedIndexModIds.add(String(id));
+  });
+
+  renderIndex();
+  setStatus(`Selected ${getSelectedIndexModIds().length} mod(s).`);
+}
+
+function clearSelectedIndexMods() {
+  state.selectedIndexModIds.clear();
+  renderIndex();
+  setStatus('Cleared selected Index mods.');
+}
+
+async function installSelectedIndexMods(event) {
+  const ids = getSelectedIndexModIds();
+
+  if (!ids.length) {
+    setStatus('Select at least one Index mod first.');
+    return;
+  }
+
+  const confirmed = confirm(`Install ${ids.length} selected mod(s)?\n\nQuartz will install them one at a time.`);
+  if (!confirmed) {
+    setStatus('Install selected canceled.');
+    return;
+  }
+
+  const btn = event?.currentTarget || $('#quartz-install-selected-index-btn');
+  const originalText = btn?.textContent || 'Install Selected';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Installing...';
+  }
+
+  const failures = [];
+  let installed = 0;
+
+  try {
+    for (const id of ids) {
+      const mod = state.indexMods.find(item => getModId(item) === id);
+      const name = mod ? getModName(mod) : id;
+
+      setStatus(`Installing ${installed + 1}/${ids.length}: ${name}`);
+
+      try {
+        const result = await window.quartzAPI.installQuartzPackage(id);
+
+        if (!isOk(result)) {
+          failures.push(`${name}: ${getError(result)}`);
+        } else {
+          installed += 1;
+          state.selectedIndexModIds.delete(id);
+        }
+      } catch (error) {
+        failures.push(`${name}: ${error.message || error}`);
+      }
+    }
+
+    await refreshAll();
+
+    if (failures.length) {
+      alert(`Installed ${installed}/${ids.length} selected mod(s).\n\nFailed:\n${failures.join('\n')}`);
+      setStatus(`Installed ${installed}/${ids.length} selected mod(s), with ${failures.length} failure(s).`);
+    } else {
+      alert(`Installed ${installed} selected mod(s).`);
+      setStatus(`Installed ${installed} selected mod(s).`);
+    }
+  } finally {
+    if (btn && document.body.contains(btn)) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
+
 function createModCard(mod, mode) {
   const id = getModId(mod);
   const name = getModName(mod);
@@ -785,9 +996,14 @@ function createModCard(mod, mode) {
   const engine = mod.engine || mod.type || 'unknown';
   const description = mod.description || 'No description provided.';
   const enabled = modIsEnabled(mod);
+  const featured = mode === 'index' && !!mod.featured;
+  const displayTags = Array.isArray(mod.tags)
+    ? mod.tags.map(tag => String(tag || '').trim()).filter(Boolean).slice(0, 8)
+    : [];
+  const selected = mode === 'index' && state.selectedIndexModIds.has(String(id));
 
   const card = document.createElement('div');
-  card.className = 'mod-card quartz-card';
+  card.className = `mod-card quartz-card${featured ? ' quartz-featured-card' : ''}${selected ? ' quartz-selected-card' : ''}`;
   card.dataset.modId = id;
 
   const actionHtml = mode === 'installed'
@@ -800,18 +1016,35 @@ function createModCard(mod, mode) {
     `;
 
   card.innerHTML = `
-    <h3>${esc(name)}</h3>
+    ${mode === 'index' ? `
+      <label class="quartz-index-select" title="Select this mod for bulk install">
+        <input class="quartz-index-select-input" type="checkbox" ${selected ? 'checked' : ''} />
+        <span>Select</span>
+      </label>
+    ` : ''}
+    <h3>${featured ? '<span class="quartz-featured-star" title="Featured">★</span> ' : ''}${esc(name)}</h3>
     <div class="quartz-meta">
+      ${featured ? '<span class="quartz-pill quartz-featured-pill">★ Featured</span>' : ''}
       <span class="quartz-pill">${esc(engine)}</span>
       <span class="quartz-pill">v${esc(version)}</span>
       <span class="quartz-pill">${mode === 'installed' ? (enabled ? 'Enabled' : 'Disabled') : 'Available'}</span>
     </div>
     <p>${esc(description)}</p>
+    ${displayTags.length ? `
+      <div class="quartz-tag-row">
+        ${displayTags.map(tag => `<span class="quartz-pill quartz-tag-pill">${esc(tag)}</span>`).join('')}
+      </div>
+    ` : ''}
     <p><strong>Developer:</strong> ${esc(developer)}</p>
     <div class="quartz-actions">
       ${actionHtml}
     </div>
   `;
+
+  card.querySelector('.quartz-index-select-input')?.addEventListener('change', event => {
+    setIndexModSelected(id, event.currentTarget.checked);
+    card.classList.toggle('quartz-selected-card', event.currentTarget.checked);
+  });
 
   card.querySelector('.quartz-install-btn')?.addEventListener('click', async event => {
     const btn = event.currentTarget;
@@ -933,6 +1166,10 @@ function ensureIndexTools() {
   tools.className = 'quartz-toolbar';
   tools.innerHTML = `
     <input id="quartz-index-search" class="quartz-search" placeholder="Search Quartz mods..." />
+    <span id="quartz-index-selected-count" class="quartz-selected-count">0 selected</span>
+    <button class="secondary-btn small" id="quartz-select-shown-index-btn">Select Shown</button>
+    <button class="secondary-btn small" id="quartz-clear-selected-index-btn" disabled>Clear Selected</button>
+    <button class="primary-btn small" id="quartz-install-selected-index-btn" disabled>Install Selected</button>
     <button class="secondary-btn small" id="quartz-refresh-index-btn">Refresh Index</button>
     <button class="secondary-btn small" id="quartz-scan-mods-folder-btn">Scan Mods Folder</button>
     <button class="secondary-btn small" id="quartz-open-mods-folder-btn">Open Mods Folder</button>
@@ -946,9 +1183,13 @@ function ensureIndexTools() {
     renderIndex();
   });
 
+  $('#quartz-select-shown-index-btn')?.addEventListener('click', selectShownIndexMods);
+  $('#quartz-clear-selected-index-btn')?.addEventListener('click', clearSelectedIndexMods);
+  $('#quartz-install-selected-index-btn')?.addEventListener('click', installSelectedIndexMods);
   $('#quartz-refresh-index-btn')?.addEventListener('click', refreshQuartzIndex);
   $('#quartz-scan-mods-folder-btn')?.addEventListener('click', autoScanQuartzModsFolder);
   $('#quartz-open-mods-folder-btn')?.addEventListener('click', openQuartzModsFolder);
+  updateIndexBulkUi();
 }
 
 function ensureIndexPager() {
@@ -1004,6 +1245,7 @@ async function loadIndex() {
     const installedIds = new Set(installed.map(getModId));
 
     state.indexMods = allMods.filter(mod => !installedIds.has(getModId(mod)));
+    pruneSelectedIndexMods();
 
     renderIndex();
   } catch (error) {
@@ -1048,6 +1290,8 @@ function renderIndex() {
     $('#quartz-index-prev').disabled = pageData.page <= 1;
     $('#quartz-index-next').disabled = pageData.page >= pageData.totalPages;
   }
+
+  updateIndexBulkUi();
 }
 
 function ensureInstalledRoot() {
