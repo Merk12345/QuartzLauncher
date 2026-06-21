@@ -3950,7 +3950,75 @@ async function refreshAll() {
   if ($('#settings')?.classList.contains('active-page')) await updateSettings();
 }
 
+function normalizeDevConsoleCommand(command = '') {
+  const raw = String(command || '').trim();
+  const key = raw.toLowerCase().replace(/\s+/g, ' ');
+
+  const aliases = new Map([
+    ['run starter', 'run'],
+    ['run starter js', 'run'],
+    ['starter', 'run'],
+    ['starter js', 'run'],
+
+    ['check project', 'check'],
+    ['project check', 'check'],
+
+    ['project build', 'build'],
+    ['build project', 'build'],
+    ['build package', 'build'],
+    ['package build', 'build'],
+    ['package', 'build'],
+
+    ['validate package', 'validate'],
+    ['package validate', 'validate'],
+    ['validate project', 'validate'],
+    ['project validate', 'validate'],
+
+    ['project tree', 'tree'],
+    ['tree project', 'tree'],
+
+    ['project manifest', 'manifest'],
+    ['manifest json', 'manifest'],
+    ['quartz json', 'manifest'],
+    ['quartz.json', 'manifest'],
+
+    ['edit main', 'edit-main'],
+    ['edit payload/main.js', 'edit-main'],
+    ['open main', 'edit-main'],
+
+    ['edit manifest', 'edit-manifest'],
+    ['edit quartz.json', 'edit-manifest'],
+    ['open manifest', 'edit-manifest'],
+
+    ['open project', 'open'],
+    ['project open', 'open'],
+    ['open folder', 'open'],
+
+    ['test install', 'install'],
+    ['install latest', 'install'],
+    ['test latest', 'install'],
+
+    ['project', 'tree'],
+    ['project status', 'tree'],
+    ['status', 'tree']
+  ]);
+
+  return aliases.get(key) || raw;
+}
+
+
 function bindButtons() {
+  // Quartz Dev Tools hard alias patch START
+  try {
+    const __qFirstArg = String(arguments?.[0] || '').trim();
+    const __qSecondArg = String(arguments?.[1] || '').trim();
+    const __qJoinedArgs = [__qFirstArg, __qSecondArg].filter(Boolean).join(' ').trim();
+    if (/^project\s+build$/i.test(__qFirstArg) || /^project\s+build$/i.test(__qJoinedArgs)) {
+      return bindButtons('build');
+    }
+  } catch (_) {}
+  // Quartz Dev Tools hard alias patch END
+
   $all('.nav-btn[data-page]').forEach(btn => {
     btn.addEventListener('click', () => showPage(btn.dataset.page));
   });
@@ -4157,6 +4225,10 @@ function bindButtons() {
     devLog('Creating starter Quartz mod...', options);
 
     const result = await window.quartzAPI.devCreateTemplate(options);
+
+    if (isOk(result) && (result.projectName || result.project?.name)) {
+      state.selectedDevProject = result.projectName || result.project.name;
+    }
 
     devLog(isOk(result) ? 'Starter mod created.' : 'Starter mod failed.', summarizeDevResult(result));
 
@@ -4621,6 +4693,7 @@ function bindButtons() {
         'ls         List files in the selected project',
         'tree       Show project folder tree',
         'manifest   Show quartz.json',
+        'aliases    package=build, project build=build, run starter js=run',
         'files      List editable project files',
         'edit-main  Open payload/main.js in Code Editor',
         'edit-manifest Open quartz.json in Code Editor',
@@ -4830,6 +4903,18 @@ function bindButtons() {
       return;
     }
 
+    // Quartz project build split-token alias
+    try {
+      if (typeof command !== 'undefined' && String(command).toLowerCase() === 'project') {
+        const __qArg0 = typeof args !== 'undefined' && args ? String(args[0] || '').toLowerCase() : '';
+        const __qRest0 = typeof rest !== 'undefined' && rest ? String(rest[0] || '').toLowerCase() : '';
+        const __qParts0 = typeof parts !== 'undefined' && parts ? String(parts[1] || '').toLowerCase() : '';
+        if (__qArg0 === 'build' || __qRest0 === 'build' || __qParts0 === 'build') {
+          return bindButtons('build');
+        }
+      }
+    } catch (_) {}
+
     devTerminalLog(`Unknown command "${raw}". Type help to see available commands.`);
   }
 
@@ -4843,7 +4928,9 @@ function bindButtons() {
 
   $('#devTerminalRunBtn')?.addEventListener('click', () => {
     const input = $('#devTerminalInput');
-    const command = input?.value || '';
+    let command = input?.value || '';
+    // Quartz dev console alias normalization
+    command = normalizeDevConsoleCommand(command);
     if (input) input.value = '';
     runDevTerminalCommand(command);
   });

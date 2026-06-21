@@ -941,206 +941,460 @@ ipcMain.handle('dev-open-workspace-folder', async () => {
 
 ipcMain.handle('dev-create-template', async (_event, options = {}) => {
   try {
-    const workspaceDir = qGetDevWorkspaceDir();
-    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.mkdirSync(qGetDevWorkspaceDir(), { recursive: true });
 
     const requestedName = String(options.name || 'My Quartz Mod').trim() || 'My Quartz Mod';
-    const requestedId = String(options.id || '').trim();
-    const requestedAuthor = String(options.author || 'YourName').trim() || 'YourName';
     const requestedDescription = String(options.description || 'A starter Quartz-native mod.').trim() || 'A starter Quartz-native mod.';
-    const requestedTemplate = String(options.template || 'basic').trim() || 'basic';
+    const requestedAuthor = String(options.author || 'Quartz Developer').trim() || 'Quartz Developer';
+    const requestedVersion = String(options.version || '0.1.0').trim() || '0.1.0';
+    const requestedId = String(options.id || '').trim();
+    const templateType = String(options.template || options.type || 'basic').trim().toLowerCase();
 
     const baseSlug = qDevSlug(requestedId || requestedName, 'my-quartz-mod').replace(/^local\./, '');
-    const safeId = requestedId
-      ? qDevSlug(requestedId, `local.${baseSlug}`)
-      : `local.${baseSlug}`;
-
-    let folderName = baseSlug;
-    let modDir = path.join(workspaceDir, folderName);
-    let counter = 2;
+    let folderSlug = baseSlug || 'my-quartz-mod';
+    let modDir = path.join(qGetDevWorkspaceDir(), folderSlug);
+    let suffix = 2;
 
     while (fs.existsSync(modDir)) {
-      folderName = `${baseSlug}-${counter}`;
-      modDir = path.join(workspaceDir, folderName);
-      counter += 1;
+      folderSlug = `${baseSlug}-${suffix}`;
+      modDir = path.join(qGetDevWorkspaceDir(), folderSlug);
+      suffix += 1;
     }
 
+    const modId = `local.${folderSlug}`;
     const payloadDir = path.join(modDir, 'payload');
+    const featuresDir = path.join(payloadDir, 'features');
+
     fs.mkdirSync(payloadDir, { recursive: true });
 
-    const finalId = folderName === baseSlug
-      ? safeId
-      : `${safeId}-${counter - 1}`;
+    const templateLabels = {
+      empty: 'Empty Package',
+      basic: 'Basic Quartz Native Mod',
+      ui: 'UI / Panel Starter',
+      settings: 'Settings Mod Starter',
+      utility: 'Utility + Helpers Starter',
+      themed: 'Themed UI Starter',
+      advanced: 'Advanced Multi-file Starter'
+    };
+
+    const templateLabel = templateLabels[templateType] || templateLabels.basic;
 
     const manifest = {
       format: 'quartz.package',
       formatVersion: 1,
-      id: finalId,
+      id: modId,
       name: requestedName,
-      version: '0.1.0',
+      version: requestedVersion,
       author: requestedAuthor,
       engine: 'quartz-native',
       entry: 'payload/main.js',
       description: requestedDescription,
-      dependencies: [],
+      tags: ['starter', templateType],
       permissions: [],
-      template: requestedTemplate
+      dependencies: [],
+      quartz: {
+        template: templateType,
+        createdWith: 'Quartz Dev Tools',
+        createdAt: new Date().toISOString()
+      }
     };
 
-    fs.writeFileSync(
-      path.join(modDir, 'quartz.json'),
-      JSON.stringify(manifest, null, 2) + '\n',
-      'utf8'
-    );
+    const writeText = (relativePath, content) => {
+      const outPath = path.join(modDir, relativePath);
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, String(content).replace(/\n*$/, '\n'), 'utf-8');
+      return relativePath;
+    };
 
-    const NL = String.fromCharCode(10);
-    const templateType = ['basic', 'empty', 'ui', 'settings'].includes(requestedTemplate)
-      ? requestedTemplate
-      : 'basic';
+    const js = (lines) => lines.join('\n') + '\n';
 
-    let starterMainLines = [];
-    let templateReadme = 'Basic Quartz Native Mod';
+    const helperContent = js([
+      "'use strict';",
+      "",
+      "const QuartzHelpers = {",
+      "  log(...args) {",
+      `    console.log(${JSON.stringify(`[${requestedName}]`)}, ...args);`,
+      "  },",
+      "",
+      "  safeText(value, fallback = '') {",
+      "    return String(value ?? fallback).trim();",
+      "  },",
+      "",
+      "  safeJson(value, fallback = {}) {",
+      "    try {",
+      "      if (typeof value === 'string') return JSON.parse(value);",
+      "      if (value && typeof value === 'object') return value;",
+      "    } catch (_) {}",
+      "    return fallback;",
+      "  },",
+      "",
+      "  createPanel(title, bodyText) {",
+      "    if (typeof document === 'undefined') {",
+      "      this.log('No document object is available in this environment.');",
+      "      return null;",
+      "    }",
+      "",
+      "    const panel = document.createElement('div');",
+      "    panel.className = 'quartz-mod-panel';",
+      "    panel.style.cssText = [",
+      "      'position:fixed',",
+      "      'right:18px',",
+      "      'bottom:18px',",
+      "      'z-index:999999',",
+      "      'max-width:320px',",
+      "      'padding:14px 16px',",
+      "      'border-radius:16px',",
+      "      'background:rgba(20,24,34,.94)',",
+      "      'color:white',",
+      "      'border:1px solid rgba(255,255,255,.16)',",
+      "      'box-shadow:0 12px 30px rgba(0,0,0,.35)',",
+      "      'font-family:system-ui,sans-serif'",
+      "    ].join(';');",
+      "",
+      "    const heading = document.createElement('strong');",
+      "    heading.textContent = title;",
+      "    heading.style.display = 'block';",
+      "    heading.style.marginBottom = '6px';",
+      "",
+      "    const body = document.createElement('div');",
+      "    body.textContent = bodyText;",
+      "    body.style.opacity = '.82';",
+      "    body.style.fontSize = '13px';",
+      "",
+      "    panel.appendChild(heading);",
+      "    panel.appendChild(body);",
+      "    document.body.appendChild(panel);",
+      "    return panel;",
+      "  }",
+      "};",
+      "",
+      "module.exports = QuartzHelpers;"
+    ]);
+
+    const basicMain = js([
+      "'use strict';",
+      "",
+      "const helpers = require('./helpers.js');",
+      "",
+      "const mod = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "",
+      "  activate() {",
+      "    helpers.log('activated');",
+      "  },",
+      "",
+      "  deactivate() {",
+      "    helpers.log('deactivated');",
+      "  }",
+      "};",
+      "",
+      "helpers.log('loaded');",
+      "",
+      "module.exports = mod;"
+    ]);
+
+    const emptyMain = js([
+      "'use strict';",
+      "",
+      "// Empty Quartz-native package starter.",
+      "// Add your code here, then use Dev Tools: Save -> Run Starter -> Check -> Build.",
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "  activate() {},",
+      "  deactivate() {}",
+      "};"
+    ]);
+
+    const uiMain = js([
+      "'use strict';",
+      "",
+      "const helpers = require('./helpers.js');",
+      "",
+      "let panel = null;",
+      "",
+      "function activate() {",
+      "  helpers.log('UI starter activated');",
+      `  panel = helpers.createPanel(${JSON.stringify(requestedName)}, ${JSON.stringify(requestedDescription)});`,
+      "}",
+      "",
+      "function deactivate() {",
+      "  if (panel?.remove) panel.remove();",
+      "  panel = null;",
+      "  helpers.log('UI starter deactivated');",
+      "}",
+      "",
+      "activate();",
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "  activate,",
+      "  deactivate",
+      "};"
+    ]);
+
+    const settingsJson = JSON.stringify({
+      enabled: true,
+      showPanel: true,
+      message: `Hello from ${requestedName}!`,
+      accent: '#ffd45a'
+    }, null, 2);
+
+    const settingsMain = js([
+      "'use strict';",
+      "",
+      "const helpers = require('./helpers.js');",
+      "const settings = require('./settings.json');",
+      "",
+      "let panel = null;",
+      "",
+      "function applySettings() {",
+      "  const enabled = settings.enabled !== false;",
+      "  if (!enabled) {",
+      "    helpers.log('disabled by settings.json');",
+      "    return;",
+      "  }",
+      "",
+      "  helpers.log('settings loaded', settings);",
+      "",
+      "  if (settings.showPanel) {",
+      "    panel = helpers.createPanel(",
+      `      ${JSON.stringify(requestedName)},`,
+      "      helpers.safeText(settings.message, 'Quartz settings starter is active.')",
+      "    );",
+      "  }",
+      "}",
+      "",
+      "function deactivate() {",
+      "  if (panel?.remove) panel.remove();",
+      "  panel = null;",
+      "}",
+      "",
+      "applySettings();",
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "  settings,",
+      "  applySettings,",
+      "  deactivate",
+      "};"
+    ]);
+
+    const utilityMain = js([
+      "'use strict';",
+      "",
+      "const helpers = require('./helpers.js');",
+      "",
+      "function runUtility() {",
+      "  const now = new Date().toISOString();",
+      "  helpers.log('utility ran at', now);",
+      "  return { ok: true, ranAt: now };",
+      "}",
+      "",
+      "const result = runUtility();",
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "  runUtility,",
+      "  result",
+      "};"
+    ]);
+
+    const themedCss = [
+      ".quartz-mod-panel {",
+      "  outline: 1px solid rgba(255, 212, 90, .35);",
+      "}",
+      "",
+      ".quartz-mod-panel strong {",
+      "  color: #ffd45a;",
+      "}"
+    ].join('\n');
+
+    const themedMain = js([
+      "'use strict';",
+      "",
+      "const helpers = require('./helpers.js');",
+      "",
+      "let panel = null;",
+      "",
+      "function injectStyles() {",
+      "  if (typeof document === 'undefined') return null;",
+      "  const style = document.createElement('style');",
+      "  style.textContent = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf-8');",
+      "  document.head.appendChild(style);",
+      "  return style;",
+      "}",
+      "",
+      "const styleNode = injectStyles();",
+      `panel = helpers.createPanel(${JSON.stringify(requestedName)}, 'Themed starter loaded. Edit payload/styles.css to customize it.');`,
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "  deactivate() {",
+      "    if (panel?.remove) panel.remove();",
+      "    if (styleNode?.remove) styleNode.remove();",
+      "  }",
+      "};"
+    ]);
+
+    const advancedFeature = js([
+      "'use strict';",
+      "",
+      "module.exports = {",
+      "  name: 'Example Feature',",
+      "",
+      "  start(helpers, settings) {",
+      "    helpers.log('Example feature started with settings:', settings);",
+      "    return { ok: true };",
+      "  }",
+      "};"
+    ]);
+
+    const advancedMain = js([
+      "'use strict';",
+      "",
+      "const helpers = require('./helpers.js');",
+      "const settings = require('./settings.json');",
+      "const exampleFeature = require('./features/example-feature.js');",
+      "",
+      "function activate() {",
+      "  helpers.log('advanced starter activated');",
+      "  const result = exampleFeature.start(helpers, settings);",
+      "  helpers.log('feature result', result);",
+      "}",
+      "",
+      "function deactivate() {",
+      "  helpers.log('advanced starter deactivated');",
+      "}",
+      "",
+      "activate();",
+      "",
+      "module.exports = {",
+      `  id: ${JSON.stringify(modId)},`,
+      `  name: ${JSON.stringify(requestedName)},`,
+      `  version: ${JSON.stringify(requestedVersion)},`,
+      "  activate,",
+      "  deactivate,",
+      "  settings",
+      "};"
+    ]);
+
+    const createdFiles = [];
+
+    createdFiles.push(writeText('quartz.json', JSON.stringify(manifest, null, 2)));
+
+    const needsHelpers = templateType !== 'empty';
+    if (needsHelpers) createdFiles.push(writeText('payload/helpers.js', helperContent));
 
     if (templateType === 'empty') {
-      templateReadme = 'Empty Package';
-      starterMainLines = [
-        "'use strict';",
-        "",
-        "// Empty Quartz package starter.",
-        "// Add your mod code here when you are ready.",
-        "",
-        "module.exports = {",
-        `  id: ${JSON.stringify(finalId)},`,
-        `  name: ${JSON.stringify(requestedName)},`,
-        "  type: 'empty-starter'",
-        "};",
-        ""
-      ];
+      createdFiles.push(writeText('payload/main.js', emptyMain));
     } else if (templateType === 'ui') {
-      templateReadme = 'UI Mod Starter';
-      starterMainLines = [
-        "'use strict';",
-        "",
-        "// UI Mod Starter",
-        "// Use this file as a starting point for Quartz-native UI work.",
-        "",
-        "function initQuartzUI() {",
-        `  console.log(${JSON.stringify(`${requestedName} UI starter loaded.`)});`,
-        "}",
-        "",
-        "initQuartzUI();",
-        "",
-        "module.exports = {",
-        `  id: ${JSON.stringify(finalId)},`,
-        `  name: ${JSON.stringify(requestedName)},`,
-        "  type: 'ui-starter'",
-        "};",
-        ""
-      ];
+      createdFiles.push(writeText('payload/main.js', uiMain));
     } else if (templateType === 'settings') {
-      templateReadme = 'Settings Mod Starter';
-      starterMainLines = [
-        "'use strict';",
-        "",
-        "// Settings Mod Starter",
-        "// This starter includes a basic settings object you can expand later.",
-        "",
-        "const defaultSettings = {",
-        "  enabled: true",
-        "};",
-        "",
-        "function loadSettings() {",
-        `  console.log(${JSON.stringify(`${requestedName} settings starter loaded.`)});`,
-        "  return { ...defaultSettings };",
-        "}",
-        "",
-        "module.exports = {",
-        `  id: ${JSON.stringify(finalId)},`,
-        `  name: ${JSON.stringify(requestedName)},`,
-        "  type: 'settings-starter',",
-        "  defaultSettings,",
-        "  loadSettings",
-        "};",
-        ""
-      ];
-
-      fs.writeFileSync(
-        path.join(payloadDir, 'settings.json'),
-        JSON.stringify({ enabled: true }, null, 2) + NL,
-        'utf8'
-      );
+      createdFiles.push(writeText('payload/main.js', settingsMain));
+      createdFiles.push(writeText('payload/settings.json', settingsJson));
+    } else if (templateType === 'utility') {
+      createdFiles.push(writeText('payload/main.js', utilityMain));
+    } else if (templateType === 'themed') {
+      createdFiles.push(writeText('payload/main.js', themedMain));
+      createdFiles.push(writeText('payload/styles.css', themedCss));
+    } else if (templateType === 'advanced') {
+      fs.mkdirSync(featuresDir, { recursive: true });
+      createdFiles.push(writeText('payload/main.js', advancedMain));
+      createdFiles.push(writeText('payload/settings.json', settingsJson));
+      createdFiles.push(writeText('payload/features/example-feature.js', advancedFeature));
+      createdFiles.push(writeText('payload/styles.css', themedCss));
     } else {
-      starterMainLines = [
-        "'use strict';",
-        "",
-        `console.log(${JSON.stringify(`Hello from ${requestedName}!`)});`,
-        "",
-        "module.exports = {",
-        `  id: ${JSON.stringify(finalId)},`,
-        `  name: ${JSON.stringify(requestedName)},`,
-        "  type: 'basic-starter'",
-        "};",
-        ""
-      ];
+      createdFiles.push(writeText('payload/main.js', basicMain));
     }
 
-    fs.writeFileSync(
-      path.join(payloadDir, 'main.js'),
-      starterMainLines.join(NL),
-      'utf8'
-    );
-
-    const readmeText = [
+    const readme = [
       `# ${requestedName}`,
-      "",
+      '',
       requestedDescription,
-      "",
-      "Created with Quartz Launcher Dev Tools.",
-      "",
-      `Template: ${templateReadme}`,
-      "",
-      "## Files",
-      "",
-      "- quartz.json - package manifest",
-      "- payload/main.js - starter mod entry file",
-      ""
-    ].join(NL);
+      '',
+      `Template: ${templateLabel}`,
+      `Package ID: ${modId}`,
+      `Version: ${requestedVersion}`,
+      '',
+      '## Files',
+      '',
+      '- `quartz.json` - package manifest',
+      '- `payload/main.js` - starter mod entry file',
+      needsHelpers ? '- `payload/helpers.js` - small helper utilities' : '',
+      ['settings', 'advanced'].includes(templateType) ? '- `payload/settings.json` - example settings file' : '',
+      ['themed', 'advanced'].includes(templateType) ? '- `payload/styles.css` - example style file' : '',
+      templateType === 'advanced' ? '- `payload/features/example-feature.js` - example split feature module' : '',
+      '',
+      '## Dev Tools flow',
+      '',
+      '1. Edit `payload/main.js` in the Code Editor.',
+      '2. Click Save.',
+      '3. Click Run Starter JS.',
+      '4. Click Check Project.',
+      '5. Click Build Package.',
+      '6. Click Validate Package.',
+      '7. Click Prepare Submission when ready.',
+      '',
+      '## Submission checklist',
+      '',
+      '- The mod has a clear name and description.',
+      '- The package builds successfully.',
+      '- The package validates successfully.',
+      '- Any risky behavior is explained in the README.',
+      '- The mod does not include secrets, tokens, or private credentials.',
+      ''
+    ].filter(Boolean).join('\n');
 
-    fs.writeFileSync(
-      path.join(modDir, 'README.md'),
-      readmeText,
-      'utf8'
-    );
+    const changelog = [
+      '# Changelog',
+      '',
+      `## ${requestedVersion}`,
+      '',
+      '- Created starter project with Quartz Dev Tools.',
+      ''
+    ].join('\n');
 
-    const changelogText = [
-      "# Changelog",
-      "",
-      "## 0.1.0",
-      "",
-      "- Initial starter mod.",
-      ""
-    ].join(NL);
+    createdFiles.push(writeText('README.md', readme));
+    createdFiles.push(writeText('CHANGELOG.md', changelog));
 
-    fs.writeFileSync(
-      path.join(modDir, 'CHANGELOG.md'),
-      changelogText,
-      'utf8'
-    );
-
-    await shell.openPath(modDir);
+    let project = null;
+    try {
+      project = qDevResolveWorkspaceProject(folderSlug);
+    } catch (_) {}
 
     return {
       ok: true,
-      modDir,
+      project,
+      projectName: folderSlug,
+      projectDir: modDir,
       manifest,
-      message: `Created starter mod: ${requestedName}`
+      manifestPath: path.join(modDir, 'quartz.json'),
+      createdFiles,
+      template: templateType,
+      templateLabel,
+      projects: qDevListWorkspaceProjects(),
+      message: `Created ${templateLabel}: ${requestedName}`
     };
   } catch (error) {
-    return { ok: false, error: error.message };
+    return {
+      ok: false,
+      error: error.message || String(error)
+    };
   }
 });
-
-
 ipcMain.handle('dev-list-projects', async () => {
   try {
     const projects = qDevListWorkspaceProjects().map(project => {
