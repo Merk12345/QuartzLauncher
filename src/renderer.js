@@ -3531,8 +3531,189 @@ function installQuartzBackupDelegatedClickHandler() {
   document.addEventListener('click', handleQuartzBackupDelegatedClick);
 }
 
+function getQuartzSafetySettingsHost() {
+  const page = $('#settings');
+  if (!page) return null;
+
+  return (
+    page.querySelector('.settings-grid') ||
+    page.querySelector('.settings-cards') ||
+    page.querySelector('.card-grid') ||
+    page.querySelector('.page-content') ||
+    page
+  );
+}
+
+function ensureQuartzSafetyCard() {
+  if ($('#quartz-safety-card')) return $('#quartz-safety-card');
+
+  const host = getQuartzSafetySettingsHost();
+  if (!host) return null;
+
+  const card = document.createElement('section');
+  card.id = 'quartz-safety-card';
+  card.className = 'settings-card quartz-card quartz-safety-card';
+  card.innerHTML = `
+    <div class="quartz-card-header">
+      <div>
+        <h3>Pre-launch Safety Check</h3>
+        <p>Check installed packages, enabled mods, validation, and runtime sync before launching Geometry Dash.</p>
+      </div>
+    </div>
+
+    <div class="quartz-actions quartz-safety-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+      <button class="primary-btn small" id="quartz-run-safety-check-btn">Run Safety Check</button>
+    </div>
+
+    <div id="quartz-safety-status" class="status-text small muted">Safety check has not been run yet.</div>
+    <div id="quartz-safety-results" style="display:grid;gap:8px;margin-top:12px;"></div>
+  `;
+
+  const backupCard = $('#quartz-backup-card');
+  const profilesCard = $('#quartz-profiles-card');
+
+  if (backupCard && backupCard.parentElement === host) {
+    host.insertBefore(card, backupCard);
+  } else if (profilesCard && profilesCard.parentElement === host) {
+    host.insertBefore(card, profilesCard);
+  } else {
+    host.appendChild(card);
+  }
+
+  return card;
+}
+
+function setQuartzSafetyStatus(text = '') {
+  const el = $('#quartz-safety-status');
+  if (el) el.textContent = text;
+}
+
+function quartzSafetyResultColor(risk = '') {
+  if (risk === 'pass') return 'rgba(90,255,150,.14)';
+  if (risk === 'warn') return 'rgba(255,210,80,.14)';
+  if (risk === 'fail') return 'rgba(255,90,90,.14)';
+  return 'rgba(255,255,255,.05)';
+}
+
+function quartzSafetyResultBorder(risk = '') {
+  if (risk === 'pass') return 'rgba(90,255,150,.35)';
+  if (risk === 'warn') return 'rgba(255,210,80,.45)';
+  if (risk === 'fail') return 'rgba(255,90,90,.45)';
+  return 'rgba(255,255,255,.12)';
+}
+
+function renderQuartzSafetyResults(result = {}) {
+  ensureQuartzSafetyCard();
+
+  const root = $('#quartz-safety-results');
+  if (!root) return;
+
+  const risk = result.risk || (result.ok ? 'pass' : 'fail');
+  const title = risk === 'pass'
+    ? 'Passed'
+    : risk === 'warn'
+      ? 'Passed with warnings'
+      : 'Needs attention';
+
+  const rows = [];
+
+  rows.push(`
+    <div style="padding:10px 12px;border-radius:12px;border:1px solid ${quartzSafetyResultBorder(risk)};background:${quartzSafetyResultColor(risk)};">
+      <strong>${esc(title)}</strong>
+      <div class="muted small" style="margin-top:4px;">
+        ${result.installedCount ?? 0} installed • ${result.enabledCount ?? 0} enabled • ${result.disabledCount ?? 0} disabled
+      </div>
+    </div>
+  `);
+
+  const groups = [
+    ['Issues', result.issues || [], 'fail'],
+    ['Warnings', result.warnings || [], 'warn'],
+    ['Passed checks', result.passed || [], 'pass']
+  ];
+
+  for (const [label, items, groupRisk] of groups) {
+    if (!Array.isArray(items) || !items.length) continue;
+
+    const list = items.slice(0, 12).map(item => {
+      const details = Array.isArray(item.details) && item.details.length
+        ? `<ul style="margin:6px 0 0 18px;">${item.details.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+        : '';
+
+      const ids = Array.isArray(item.ids) && item.ids.length
+        ? `<div class="muted small" style="margin-top:4px;">${esc(item.ids.join(', '))}</div>`
+        : '';
+
+      return `
+        <li style="margin:6px 0;">
+          <strong>${esc(item.area || groupRisk)}</strong>${item.id ? ` / ${esc(item.id)}` : ''}: ${esc(item.message || item)}
+          ${details}
+          ${ids}
+        </li>
+      `;
+    }).join('');
+
+    rows.push(`
+      <div style="padding:10px 12px;border-radius:12px;border:1px solid ${quartzSafetyResultBorder(groupRisk)};background:${quartzSafetyResultColor(groupRisk)};">
+        <strong>${esc(label)} (${items.length})</strong>
+        <ul style="margin:8px 0 0 18px;padding:0;">${list}</ul>
+      </div>
+    `);
+  }
+
+  root.innerHTML = rows.join('');
+}
+
+async function runQuartzSafetyCheck() {
+  ensureQuartzSafetyCard();
+
+  if (!window.quartzAPI?.runQuartzPrelaunchSafetyCheck) {
+    alert('Pre-launch Safety Check is not connected. Restart Quartz Launcher and try again.');
+    setQuartzSafetyStatus('Pre-launch Safety Check is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  try {
+    setQuartzSafetyStatus('Running safety check and syncing runtime...');
+    const result = await window.quartzAPI.runQuartzPrelaunchSafetyCheck({ syncRuntime: true });
+
+    renderQuartzSafetyResults(result);
+
+    const risk = result.risk || (result.ok ? 'pass' : 'fail');
+    const msg = risk === 'pass'
+      ? `Safety check passed: ${result.enabledCount ?? 0} enabled mod(s) ready.`
+      : risk === 'warn'
+        ? `Safety check passed with ${result.warningCount ?? 0} warning(s).`
+        : `Safety check found ${result.issueCount ?? 0} issue(s).`;
+
+    setQuartzSafetyStatus(msg);
+    setStatus(msg);
+  } catch (error) {
+    alert(`Safety Check crashed:\n${error.message || error}`);
+    setQuartzSafetyStatus(`Safety Check crashed: ${error.message || error}`);
+  }
+}
+
+function handleQuartzSafetyDelegatedClick(event) {
+  const target = event.target?.closest?.('#quartz-run-safety-check-btn');
+  if (!target) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  runQuartzSafetyCheck();
+}
+
+function installQuartzSafetyDelegatedClickHandler() {
+  if (window.__quartzSafetyDelegatedClickInstalled) return;
+  window.__quartzSafetyDelegatedClickInstalled = true;
+  document.addEventListener('click', handleQuartzSafetyDelegatedClick);
+}
+
 async function updateSettings() {
   ensureRuntimeSettingsCard();
+  ensureQuartzSafetyCard();
+  ensureQuartzSafetyCard();
   ensureQuartzBackupCard();
   ensureQuartzBackupCard();
   ensureQuartzBackupCard();
@@ -4742,6 +4923,7 @@ function bindButtons() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  installQuartzSafetyDelegatedClickHandler();
   installQuartzBackupDelegatedClickHandler();
   installQuartzProfilesDelegatedClickHandler();
   addStyles();

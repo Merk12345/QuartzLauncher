@@ -5407,6 +5407,294 @@ try {
   ipcMain.removeHandler('export-installed-mod-list');
 } catch {}
 
+// ===== Quartz Pre-launch Safety Check START =====
+// Checks the current Quartz setup before launching GD: installed files, enabled state,
+// package validation, and runtime manifest health. It also rebuilds the runtime manifest.
+function qPrelaunchModId(mod) {
+  return String(mod?.id || mod?.packageId || mod?.modId || mod?.slug || '').trim();
+}
+
+function qPrelaunchIsEnabled(mod) {
+  const id = qPrelaunchModId(mod);
+  if (!id) return false;
+
+  try {
+    if (typeof qIsQuartzModEnabled === 'function') return !!qIsQuartzModEnabled(id);
+  } catch (_) {}
+
+  if (mod?.disabled === true) return false;
+  if (mod?.enabled === false) return false;
+  return true;
+}
+
+function qPrelaunchValidationOk(validation) {
+  if (!validation || typeof validation !== 'object') return true;
+  if (validation.ok === false) return false;
+  if (validation.valid === false) return false;
+  if (Array.isArray(validation.errors) && validation.errors.length) return false;
+  if (Array.isArray(validation.fatal) && validation.fatal.length) return false;
+  return true;
+}
+
+function qPrelaunchValidationMessages(validation) {
+  if (!validation || typeof validation !== 'object') return [];
+
+  const out = [];
+
+  for (const key of ['errors', 'fatal', 'warnings']) {
+    const value = validation[key];
+    if (Array.isArray(value)) {
+      value.forEach(item => out.push(String(item?.message || item || '').trim()));
+    } else if (value) {
+      out.push(String(value).trim());
+    }
+  }
+
+  return out.filter(Boolean).slice(0, 8);
+}
+
+function qPrelaunchReadRuntimeManifest() {
+  try {
+    if (!fs.existsSync(QUARTZ_RUNTIME_MANIFEST)) return null;
+    return JSON.parse(fs.readFileSync(QUARTZ_RUNTIME_MANIFEST, 'utf-8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function qPrelaunchManifestIds(manifest) {
+  const raw =
+    (Array.isArray(manifest?.mods) && manifest.mods) ||
+    (Array.isArray(manifest?.enabledMods) && manifest.enabledMods) ||
+    (Array.isArray(manifest?.packages) && manifest.packages) ||
+    [];
+
+  return new Set(
+    raw
+      .map(item => {
+        if (typeof item === 'string') return item;
+        return item?.id || item?.packageId || item?.modId || item?.name || '';
+      })
+      .map(id => String(id).trim())
+      .filter(Boolean)
+  );
+}
+
+function qRunQuartzPrelaunchSafetyCheck(options = {}) {
+  const startedAt = new Date().toISOString();
+  const issues = [];
+  const warnings = [];
+  const passed = [];
+
+  try {
+    if (typeof qEnsureNativeFolders === 'function') qEnsureNativeFolders();
+    if (typeof qEnsureEnableFolders === 'function') qEnsureEnableFolders();
+    if (typeof qEnsureRuntimeFolders === 'function') qEnsureRuntimeFolders();
+  } catch (error) {
+    issues.push({
+      level: 'fail',
+      area: 'folders',
+      message: `Could not prepare Quartz folders: ${error.message || error}`
+    });
+  }
+
+  const installed = typeof qInstalledModsWithEnabledState === 'function'
+    ? qInstalledModsWithEnabledState()
+    : [];
+
+  const installedIds = new Set();
+  const enabledIds = new Set();
+  const disabledIds = new Set();
+
+  if (!installed.length) {
+    warnings.push({
+      level: 'warn',
+      area: 'installed',
+      message: 'No Quartz mods are installed.'
+    });
+  }
+
+  for (const mod of installed) {
+    const id = qPrelaunchModId(mod);
+
+    if (!id) {
+      warnings.push({
+        level: 'warn',
+        area: 'installed',
+        message: 'Found an installed mod with no package id.'
+      });
+      continue;
+    }
+
+    installedIds.add(id);
+
+    const enabled = qPrelaunchIsEnabled(mod);
+    if (enabled) enabledIds.add(id);
+    else disabledIds.add(id);
+
+    let packagePath = '';
+    try {
+      packagePath = qLibraryPackagePath(id);
+    } catch (_) {}
+
+    if (!packagePath || !fs.existsSync(packagePath)) {
+      issues.push({
+        level: 'fail',
+        area: 'packages',
+        id,
+        message: `Installed package file is missing for ${id}.`
+      });
+      continue;
+    }
+
+    try {
+      if (typeof qValidateQuartzPackageFileSync === 'function') {
+        const validation = qValidateQuartzPackageFileSync(packagePath);
+        if (!qPrelaunchValidationOk(validation)) {
+          issues.push({
+            level: 'fail',
+            area: 'validation',
+            id,
+            message: `Package validation failed for ${id}.`,
+            details: qPrelaunchValidationMessages(validation)
+          });
+        }
+      }
+    } catch (error) {
+      warnings.push({
+        level: 'warn',
+        area: 'validation',
+        id,
+        message: `Could not validate ${id}: ${error.message || error}`
+      });
+    }
+
+    if (enabled) {
+      try {
+        const enabledPath = qEnabledPackagePath(id);
+        if (!enabledPath || !fs.existsSync(enabledPath)) {
+          warnings.push({
+            level: 'warn',
+            area: 'enabled',
+            id,
+            message: `Enabled mod ${id} is not present in the enabled folder. Runtime sync may repair this.`
+          });
+        }
+      } catch (error) {
+        warnings.push({
+          level: 'warn',
+          area: 'enabled',
+          id,
+          message: `Could not check enabled copy for ${id}: ${error.message || error}`
+        });
+      }
+    }
+  }
+
+  if (!enabledIds.size && installed.length) {
+    warnings.push({
+      level: 'warn',
+      area: 'enabled',
+      message: 'No installed Quartz mods are enabled.'
+    });
+  }
+
+  let runtimeSync = null;
+
+  if (options.syncRuntime !== false) {
+    try {
+      if (typeof qBuildRuntimeManifest === 'function') {
+        runtimeSync = qBuildRuntimeManifest();
+        passed.push({
+          area: 'runtime',
+          message: `Runtime manifest rebuilt with ${runtimeSync.enabledCount ?? enabledIds.size} enabled mod(s).`
+        });
+      }
+    } catch (error) {
+      issues.push({
+        level: 'fail',
+        area: 'runtime',
+        message: `Runtime sync failed: ${error.message || error}`
+      });
+    }
+  }
+
+  const manifest = qPrelaunchReadRuntimeManifest();
+
+  if (!manifest) {
+    issues.push({
+      level: 'fail',
+      area: 'runtime',
+      message: 'Runtime manifest is missing or unreadable.'
+    });
+  } else {
+    const manifestIds = qPrelaunchManifestIds(manifest);
+
+    if (enabledIds.size && !manifestIds.size) {
+      warnings.push({
+        level: 'warn',
+        area: 'runtime',
+        message: 'Runtime manifest exists, but no enabled mod ids were detected inside it.'
+      });
+    }
+
+    const missingFromRuntime = [...enabledIds].filter(id => manifestIds.size && !manifestIds.has(id));
+
+    if (missingFromRuntime.length) {
+      warnings.push({
+        level: 'warn',
+        area: 'runtime',
+        message: `${missingFromRuntime.length} enabled mod(s) were not found in the runtime manifest.`,
+        ids: missingFromRuntime.slice(0, 25)
+      });
+    } else if (enabledIds.size) {
+      passed.push({
+        area: 'runtime',
+        message: 'Enabled mods are represented in the runtime manifest.'
+      });
+    }
+  }
+
+  if (!issues.length && !warnings.length) {
+    passed.push({
+      area: 'overall',
+      message: 'No safety issues found.'
+    });
+  }
+
+  const risk = issues.length ? 'fail' : warnings.length ? 'warn' : 'pass';
+
+  return {
+    ok: issues.length === 0,
+    risk,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    installedCount: installedIds.size,
+    enabledCount: enabledIds.size,
+    disabledCount: disabledIds.size,
+    issueCount: issues.length,
+    warningCount: warnings.length,
+    passedCount: passed.length,
+    issues,
+    warnings,
+    passed,
+    runtimeSync,
+    runtimeDir: typeof QUARTZ_RUNTIME_DIR !== 'undefined' ? QUARTZ_RUNTIME_DIR : '',
+    runtimeManifest: typeof QUARTZ_RUNTIME_MANIFEST !== 'undefined' ? QUARTZ_RUNTIME_MANIFEST : '',
+    dataDir: typeof qNativeDataDir === 'function' ? qNativeDataDir() : ''
+  };
+}
+
+try {
+  ipcMain.removeHandler('run-quartz-prelaunch-safety-check');
+} catch (_) {}
+
+ipcMain.handle('run-quartz-prelaunch-safety-check', async (_event, options = {}) => {
+  return qRunQuartzPrelaunchSafetyCheck(options);
+});
+// ===== Quartz Pre-launch Safety Check END =====
+
+
 // ===== Quartz Backup / Restore START =====
 // Local setup backups for installed packages, enabled/disabled states, profiles/loadouts,
 // and runtime files. Restore is intentionally non-destructive: it does not delete unrelated current mods.
