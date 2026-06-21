@@ -3,6 +3,9 @@
 const state = {
   indexMods: [],
   installedMods: [],
+  installedUpdateMap: new Map(),
+  installedUpdatesCheckedAt: null,
+  installedUpdatesBusy: false,
   quartzProfiles: [],
   quartzProfilesBusy: false,
   indexSearch: '',
@@ -2083,6 +2086,16 @@ function updateInstalledBulkUi() {
   $('#quartz-installed-disable-selected-btn')?.toggleAttribute('disabled', noneSelected || busy);
   $('#quartz-installed-uninstall-selected-btn')?.toggleAttribute('disabled', noneSelected || busy);
   $('#quartz-installed-export-btn')?.toggleAttribute('disabled', busy || state.installedMods.length === 0);
+
+  const updateCount = state.installedUpdateMap?.size || 0;
+  const selectedUpdateCount = getSelectedInstalledModIds()
+    .filter(id => state.installedUpdateMap?.has?.(id))
+    .length;
+
+  $('#quartz-check-updates-btn')?.toggleAttribute('disabled', busy || state.installedMods.length === 0);
+  $('#quartz-update-all-btn')?.toggleAttribute('disabled', busy || updateCount === 0);
+  $('#quartz-update-selected-btn')?.toggleAttribute('disabled', busy || selectedUpdateCount === 0);
+  updateInstalledUpdateSummary();
 }
 
 function setInstalledBulkProgress(text = '') {
@@ -2222,6 +2235,308 @@ async function runInstalledBulkAction(action) {
   }
 }
 
+function quartzUpdateCleanVersion(value = '') {
+  return String(value || '')
+    .trim()
+    .replace(/^v/i, '')
+    .replace(/\+.*$/, '')
+    .replace(/\s+/g, '');
+}
+
+function quartzUpdateVersionParts(value = '') {
+  const clean = quartzUpdateCleanVersion(value);
+  if (!clean) return [];
+
+  return clean
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map(part => {
+      if (/^\d+$/.test(part)) return Number(part);
+      return part.toLowerCase();
+    });
+}
+
+function quartzCompareVersions(a = '', b = '') {
+  const av = quartzUpdateVersionParts(a);
+  const bv = quartzUpdateVersionParts(b);
+
+  if (!av.length && !bv.length) return 0;
+  if (!av.length) return -1;
+  if (!bv.length) return 1;
+
+  const len = Math.max(av.length, bv.length);
+
+  for (let i = 0; i < len; i += 1) {
+    const left = av[i] ?? 0;
+    const right = bv[i] ?? 0;
+
+    if (typeof left === 'number' && typeof right === 'number') {
+      if (left !== right) return left > right ? 1 : -1;
+      continue;
+    }
+
+    const l = String(left);
+    const r = String(right);
+    if (l !== r) return l > r ? 1 : -1;
+  }
+
+  return 0;
+}
+
+function quartzModVersion(mod = {}) {
+  return quartzUpdateCleanVersion(
+    mod.version ||
+    mod.latestVersion ||
+    mod.modVersion ||
+    mod.packageVersion ||
+    mod.tag ||
+    ''
+  );
+}
+
+function quartzInstalledModIsEnabled(mod = {}) {
+  if (mod.enabled === false) return false;
+  if (mod.disabled === true) return false;
+  if (mod.isDisabled === true) return false;
+  return true;
+}
+
+async function quartzLoadIndexForUpdateCheck() {
+  let result = null;
+
+  if (window.quartzAPI?.getPublicIndexLocal) {
+    result = await Promise.race([
+      window.quartzAPI.getPublicIndexLocal(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Local index timed out')), 10000))
+    ]);
+  } else if (window.quartzAPI?.getQuartzIndex) {
+    result = await window.quartzAPI.getQuartzIndex({ page: 1, pageSize: 5000, category: 'All' });
+  } else {
+    throw new Error('No Quartz Index API is available.');
+  }
+
+  const mods = normalizeIndexMods(result);
+  const byId = new Map();
+
+  for (const mod of mods) {
+    const id = getModId(mod);
+    if (!id) continue;
+
+    const old = byId.get(id);
+    if (!old) {
+      byId.set(id, mod);
+      continue;
+    }
+
+    const oldVersion = quartzModVersion(old);
+    const newVersion = quartzModVersion(mod);
+    if (quartzCompareVersions(oldVersion, newVersion) < 0) {
+      byId.set(id, mod);
+    }
+  }
+
+  return byId;
+}
+
+function getInstalledUpdateCandidates() {
+  return [...(state.installedUpdateMap || new Map()).values()];
+}
+
+function updateInstalledUpdateSummary() {
+  const el = $('#quartz-installed-update-summary');
+  if (!el) return;
+
+  const count = state.installedUpdateMap?.size || 0;
+
+  if (state.installedUpdatesBusy) {
+    el.textContent = 'Checking updates...';
+    return;
+  }
+
+  if (!state.installedUpdatesCheckedAt) {
+    el.textContent = 'Updates not checked yet.';
+    return;
+  }
+
+  if (count === 0) {
+    el.textContent = `No updates found. Checked ${new Date(state.installedUpdatesCheckedAt).toLocaleTimeString()}.`;
+    return;
+  }
+
+  el.textContent = `${count} update(s) available. Checked ${new Date(state.installedUpdatesCheckedAt).toLocaleTimeString()}.`;
+}
+
+async function checkInstalledModUpdates(options = {}) {
+  const quiet = !!options.quiet;
+
+  if (!window.quartzAPI?.getInstalledMods) {
+    alert('Installed Mods API is not connected. Restart Quartz Launcher and try again.');
+    return [];
+  }
+
+  try {
+    state.installedUpdatesBusy = true;
+    updateInstalledBulkUi();
+    if (!quiet) setStatus('Checking installed mods for updates...');
+
+    if (!Array.isArray(state.installedMods) || state.installedMods.length === 0) {
+      const installedResult = await window.quartzAPI.getInstalledMods();
+      state.installedMods = normalizeInstalledMods(installedResult);
+    }
+
+    const indexById = await quartzLoadIndexForUpdateCheck();
+    const updates = [];
+
+    for (const installed of state.installedMods || []) {
+      const id = getModId(installed);
+      if (!id) continue;
+
+      const latest = indexById.get(id);
+      if (!latest) continue;
+
+      const installedVersion = quartzModVersion(installed);
+      const latestVersion = quartzModVersion(latest);
+
+      if (!installedVersion || !latestVersion) continue;
+
+      if (quartzCompareVersions(installedVersion, latestVersion) < 0) {
+        updates.push({
+          id,
+          installed,
+          latest,
+          installedVersion,
+          latestVersion,
+          wasEnabled: quartzInstalledModIsEnabled(installed)
+        });
+      }
+    }
+
+    state.installedUpdateMap = new Map(updates.map(item => [item.id, item]));
+    state.installedUpdatesCheckedAt = Date.now();
+
+    updateInstalledBulkUi();
+    renderInstalledMods();
+
+    const message = updates.length
+      ? `Found ${updates.length} update(s).`
+      : 'No installed mod updates found.';
+
+    if (!quiet) setStatus(message);
+
+    return updates;
+  } catch (error) {
+    console.error('[Quartz Updates] check failed:', error);
+    if (!quiet) alert(`Update check failed:\n${error.message || error}`);
+    setStatus(`Update check failed: ${error.message || error}`);
+    return [];
+  } finally {
+    state.installedUpdatesBusy = false;
+    updateInstalledBulkUi();
+    updateInstalledUpdateSummary();
+  }
+}
+
+async function updateInstalledModsByIds(ids = []) {
+  const uniqueIds = [...new Set(ids.map(id => String(id || '').trim()).filter(Boolean))];
+
+  if (!uniqueIds.length) {
+    setStatus('No mods selected for update.');
+    return;
+  }
+
+  if (!state.installedUpdateMap || state.installedUpdateMap.size === 0) {
+    await checkInstalledModUpdates({ quiet: true });
+  }
+
+  const candidates = uniqueIds
+    .map(id => state.installedUpdateMap.get(id))
+    .filter(Boolean);
+
+  if (!candidates.length) {
+    alert('None of the selected mods have detected updates.');
+    return;
+  }
+
+  const ok = confirm(`Update ${candidates.length} mod(s)?\n\nQuartz will reinstall the latest package and preserve each mod's enabled/disabled state.`);
+  if (!ok) return;
+
+  let updated = 0;
+  const failed = [];
+
+  state.installedUpdatesBusy = true;
+  updateInstalledBulkUi();
+
+  for (const candidate of candidates) {
+    const id = candidate.id;
+    const wasEnabled = !!candidate.wasEnabled;
+
+    try {
+      setStatus(`Updating ${candidate.installed?.name || candidate.latest?.name || id}...`);
+
+      const result = await window.quartzAPI.installQuartzPackage(id);
+
+      if (!result?.ok) {
+        failed.push(`${id}: ${getError(result)}`);
+        continue;
+      }
+
+      try {
+        if (wasEnabled) {
+          await window.quartzAPI.enableQuartzMod(id);
+        } else {
+          await window.quartzAPI.disableQuartzMod(id);
+        }
+      } catch (stateError) {
+        failed.push(`${id}: updated, but enabled/disabled restore failed: ${stateError.message || stateError}`);
+      }
+
+      updated += 1;
+      state.installedUpdateMap.delete(id);
+      state.selectedInstalledModIds?.delete?.(id);
+    } catch (error) {
+      failed.push(`${id}: ${error.message || error}`);
+    }
+  }
+
+  state.installedUpdatesBusy = false;
+
+  await loadInstalledMods(false);
+  await checkInstalledModUpdates({ quiet: true });
+
+  const msg = `Updated ${updated} mod(s).${failed.length ? ` ${failed.length} failed.` : ''}`;
+  setStatus(msg);
+
+  if (failed.length) {
+    alert(`${msg}\n\n${failed.join('\n')}`);
+  }
+}
+
+async function updateAllInstalledMods() {
+  if (!state.installedUpdateMap || state.installedUpdateMap.size === 0) {
+    await checkInstalledModUpdates({ quiet: true });
+  }
+
+  const ids = [...(state.installedUpdateMap || new Map()).keys()];
+
+  if (!ids.length) {
+    alert('No updates available.');
+    return;
+  }
+
+  await updateInstalledModsByIds(ids);
+}
+
+async function updateSelectedInstalledMods() {
+  const ids = getSelectedInstalledModIds();
+
+  if (!ids.length) {
+    alert('Select at least one installed mod first.');
+    return;
+  }
+
+  await updateInstalledModsByIds(ids);
+}
+
 async function exportInstalledModList() {
   if (!window.quartzAPI?.exportInstalledModList) {
     alert('Export Installed Mods is not connected. Restart Quartz and try again.');
@@ -2293,7 +2608,11 @@ function renderInstalledMods() {
       <button class="secondary-btn small" id="quartz-installed-enable-selected-btn" disabled>Enable Selected</button>
       <button class="secondary-btn small" id="quartz-installed-disable-selected-btn" disabled>Disable Selected</button>
       <button class="secondary-btn small quartz-danger" id="quartz-installed-uninstall-selected-btn" disabled>Uninstall Selected</button>
+      <button class="secondary-btn small" id="quartz-check-updates-btn">Check Updates</button>
+      <button class="secondary-btn small" id="quartz-update-selected-btn" disabled>Update Selected</button>
+      <button class="primary-btn small" id="quartz-update-all-btn" disabled>Update All</button>
       <button class="secondary-btn small" id="quartz-installed-export-btn">Export List</button>
+      <span id="quartz-installed-update-summary" class="muted small">Updates not checked yet.</span>
       <button class="secondary-btn small" id="quartz-open-mods-folder-btn-2">Open Mods Folder</button>
       <button class="secondary-btn small" id="quartz-scan-mods-folder-btn-2">Scan Mods Folder</button>
     </div>
@@ -2336,6 +2655,9 @@ function renderInstalledMods() {
   $('#quartz-installed-disable-selected-btn')?.addEventListener('click', () => runInstalledBulkAction('disable'));
   $('#quartz-installed-uninstall-selected-btn')?.addEventListener('click', () => runInstalledBulkAction('uninstall'));
   $('#quartz-installed-export-btn')?.addEventListener('click', exportInstalledModList);
+  $('#quartz-check-updates-btn')?.addEventListener('click', () => checkInstalledModUpdates({ quiet: false }));
+  $('#quartz-update-all-btn')?.addEventListener('click', updateAllInstalledMods);
+  $('#quartz-update-selected-btn')?.addEventListener('click', updateSelectedInstalledMods);
   $('#quartz-open-mods-folder-btn-2')?.addEventListener('click', openQuartzModsFolder);
   $('#quartz-scan-mods-folder-btn-2')?.addEventListener('click', autoScanQuartzModsFolder);
 
@@ -2358,7 +2680,22 @@ function renderInstalledMods() {
       </div>
     `;
   } else {
-    pageData.mods.forEach(mod => grid.appendChild(createModCard(mod, 'installed')));
+    pageData.mods.forEach(mod => {
+      const card = createModCard(mod, 'installed');
+      const id = getModId(mod);
+      const update = id ? state.installedUpdateMap?.get?.(id) : null;
+
+      if (update && card) {
+        card.classList.add('quartz-update-available');
+        const badge = document.createElement('div');
+        badge.className = 'quartz-update-badge';
+        badge.style.cssText = 'margin-top:8px;padding:6px 8px;border-radius:999px;border:1px solid rgba(255,210,80,.45);background:rgba(255,210,80,.12);font-size:12px;';
+        badge.textContent = `Update available: ${update.installedVersion} → ${update.latestVersion}`;
+        card.appendChild(badge);
+      }
+
+      grid.appendChild(card);
+    });
   }
 
   const pager = ensureInstalledPager(root);
