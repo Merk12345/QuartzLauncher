@@ -5408,9 +5408,8 @@ try {
 } catch {}
 
 // ===== Quartz Backup / Restore START =====
-// Creates a local folder backup of installed Quartz packages, enabled/disabled states,
-// profiles/loadouts, and runtime status files. Restore copies packages/profiles back
-// and reapplies saved enabled/disabled states without deleting unrelated current mods.
+// Local setup backups for installed packages, enabled/disabled states, profiles/loadouts,
+// and runtime files. Restore is intentionally non-destructive: it does not delete unrelated current mods.
 function qBackupsRootDir() {
   return path.join(app.getPath('desktop') || os.homedir(), 'QuartzLauncherBackups');
 }
@@ -5433,13 +5432,6 @@ function qBackupReadJson(filePath, fallback = null) {
   }
 }
 
-function qBackupCopyFileIfExists(src, dest) {
-  if (!src || !fs.existsSync(src)) return false;
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(src, dest);
-  return true;
-}
-
 function qBackupCopyDirJsonFiles(srcDir, destDir) {
   let count = 0;
   if (!srcDir || !fs.existsSync(srcDir)) return count;
@@ -5450,14 +5442,34 @@ function qBackupCopyDirJsonFiles(srcDir, destDir) {
     if (!name.toLowerCase().endsWith('.json')) continue;
 
     const src = path.join(srcDir, name);
-    const stat = fs.statSync(src);
-    if (!stat.isFile()) continue;
+    if (!fs.statSync(src).isFile()) continue;
 
     fs.copyFileSync(src, path.join(destDir, name));
     count += 1;
   }
 
   return count;
+}
+
+function qBackupSafeInstalledSnapshot() {
+  if (typeof qProfileSnapshotInstalledMods === 'function') {
+    return qProfileSnapshotInstalledMods();
+  }
+
+  if (typeof qInstalledModsWithEnabledState === 'function') {
+    return qInstalledModsWithEnabledState().map(mod => {
+      const id = String(mod.id || mod.packageId || '').trim();
+      return {
+        id,
+        name: String(mod.name || mod.title || id),
+        version: String(mod.version || ''),
+        author: String(mod.author || ''),
+        enabled: mod.enabled !== false && mod.disabled !== true
+      };
+    }).filter(mod => mod.id);
+  }
+
+  return [];
 }
 
 function qCreateQuartzBackup() {
@@ -5471,17 +5483,14 @@ function qCreateQuartzBackup() {
   const backupDir = path.join(root, backupName);
 
   const packagesDir = path.join(backupDir, 'packages');
-  const profilesDir = path.join(backupDir, 'profiles');
-  const runtimeDir = path.join(backupDir, 'runtime');
+  const profilesBackupDir = path.join(backupDir, 'profiles');
+  const runtimeBackupDir = path.join(backupDir, 'runtime');
 
   fs.mkdirSync(packagesDir, { recursive: true });
-  fs.mkdirSync(profilesDir, { recursive: true });
-  fs.mkdirSync(runtimeDir, { recursive: true });
+  fs.mkdirSync(profilesBackupDir, { recursive: true });
+  fs.mkdirSync(runtimeBackupDir, { recursive: true });
 
-  const installed = typeof qProfileSnapshotInstalledMods === 'function'
-    ? qProfileSnapshotInstalledMods()
-    : [];
-
+  const installed = qBackupSafeInstalledSnapshot();
   const enabledModIds = installed.filter(mod => mod.enabled).map(mod => mod.id).filter(Boolean);
   const disabledModIds = installed.filter(mod => !mod.enabled).map(mod => mod.id).filter(Boolean);
 
@@ -5508,14 +5517,16 @@ function qCreateQuartzBackup() {
 
   let copiedProfiles = 0;
   try {
-    copiedProfiles = qBackupCopyDirJsonFiles(qProfilesDir(), profilesDir);
+    if (typeof qProfilesDir === 'function') {
+      copiedProfiles = qBackupCopyDirJsonFiles(qProfilesDir(), profilesBackupDir);
+    }
   } catch (_) {}
 
   const runtimeFiles = [];
-  for (const filePath of [QUARTZ_RUNTIME_MANIFEST, QUARTZ_RUNTIME_STATUS]) {
+  for (const filePath of [typeof QUARTZ_RUNTIME_MANIFEST !== 'undefined' ? QUARTZ_RUNTIME_MANIFEST : '', typeof QUARTZ_RUNTIME_STATUS !== 'undefined' ? QUARTZ_RUNTIME_STATUS : '']) {
     try {
       if (filePath && fs.existsSync(filePath)) {
-        const dest = path.join(runtimeDir, path.basename(filePath));
+        const dest = path.join(runtimeBackupDir, path.basename(filePath));
         fs.copyFileSync(filePath, dest);
         runtimeFiles.push(path.basename(filePath));
       }
@@ -5595,20 +5606,14 @@ async function qPickQuartzBackupFolder() {
 
 function qRestoreQuartzBackupFromDir(backupDir) {
   if (!backupDir || !fs.existsSync(backupDir)) {
-    return {
-      ok: false,
-      error: 'Backup folder not found.'
-    };
+    return { ok: false, error: 'Backup folder not found.' };
   }
 
   const manifestPath = path.join(backupDir, 'backup.json');
   const manifest = qBackupReadJson(manifestPath);
 
   if (!manifest || manifest.format !== 'quartz.launcher.backup.v1') {
-    return {
-      ok: false,
-      error: 'This folder does not look like a Quartz Launcher backup.'
-    };
+    return { ok: false, error: 'This folder does not look like a Quartz Launcher backup.' };
   }
 
   if (typeof qEnsureNativeFolders === 'function') qEnsureNativeFolders();
@@ -5629,29 +5634,23 @@ function qRestoreQuartzBackupFromDir(backupDir) {
         if (!/\.(quartz|geode|zip)$/i.test(name)) continue;
 
         const src = path.join(packagesDir, name);
-        const stat = fs.statSync(src);
-        if (!stat.isFile()) continue;
+        if (!fs.statSync(src).isFile()) continue;
 
-        const dest = path.join(libraryDir, name);
-        fs.copyFileSync(src, dest);
+        fs.copyFileSync(src, path.join(libraryDir, name));
         restoredPackages.push(name);
       }
     }
   } catch (error) {
-    failed.push({
-      step: 'packages',
-      error: error.message || String(error)
-    });
+    failed.push({ step: 'packages', error: error.message || String(error) });
   }
 
   let restoredProfiles = 0;
   try {
-    restoredProfiles = qBackupCopyDirJsonFiles(path.join(backupDir, 'profiles'), qProfilesDir());
+    if (typeof qProfilesDir === 'function') {
+      restoredProfiles = qBackupCopyDirJsonFiles(path.join(backupDir, 'profiles'), qProfilesDir());
+    }
   } catch (error) {
-    failed.push({
-      step: 'profiles',
-      error: error.message || String(error)
-    });
+    failed.push({ step: 'profiles', error: error.message || String(error) });
   }
 
   const installedSnapshot = Array.isArray(manifest.installedMods) ? manifest.installedMods : [];
@@ -5674,11 +5673,7 @@ function qRestoreQuartzBackupFromDir(backupDir) {
       qEnableQuartzMod(id);
       enabledCount += 1;
     } catch (error) {
-      failed.push({
-        step: 'enable',
-        id,
-        error: error.message || String(error)
-      });
+      failed.push({ step: 'enable', id, error: error.message || String(error) });
     }
   }
 
@@ -5687,11 +5682,7 @@ function qRestoreQuartzBackupFromDir(backupDir) {
       qDisableQuartzMod(id);
       disabledCount += 1;
     } catch (error) {
-      failed.push({
-        step: 'disable',
-        id,
-        error: error.message || String(error)
-      });
+      failed.push({ step: 'disable', id, error: error.message || String(error) });
     }
   }
 
@@ -5701,10 +5692,7 @@ function qRestoreQuartzBackupFromDir(backupDir) {
       runtime = qBuildRuntimeManifest();
     }
   } catch (error) {
-    failed.push({
-      step: 'runtime',
-      error: error.message || String(error)
-    });
+    failed.push({ step: 'runtime', error: error.message || String(error) });
   }
 
   return {
@@ -5726,9 +5714,7 @@ for (const channel of [
   'restore-quartz-backup',
   'open-quartz-backups-folder'
 ]) {
-  try {
-    ipcMain.removeHandler(channel);
-  } catch (_) {}
+  try { ipcMain.removeHandler(channel); } catch (_) {}
 }
 
 ipcMain.handle('create-quartz-backup', async () => {
@@ -5738,11 +5724,7 @@ ipcMain.handle('create-quartz-backup', async () => {
 ipcMain.handle('restore-quartz-backup', async () => {
   const backupDir = await qPickQuartzBackupFolder();
   if (!backupDir) {
-    return {
-      ok: false,
-      canceled: true,
-      error: 'Restore canceled.'
-    };
+    return { ok: false, canceled: true, error: 'Restore canceled.' };
   }
 
   return qRestoreQuartzBackupFromDir(backupDir);
@@ -5751,10 +5733,7 @@ ipcMain.handle('restore-quartz-backup', async () => {
 ipcMain.handle('open-quartz-backups-folder', async () => {
   const dir = qEnsureBackupsRootDir();
   await shell.openPath(dir);
-  return {
-    ok: true,
-    backupsDir: dir
-  };
+  return { ok: true, backupsDir: dir };
 });
 // ===== Quartz Backup / Restore END =====
 

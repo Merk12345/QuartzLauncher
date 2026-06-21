@@ -2905,6 +2905,7 @@ async function updateSettings() {
   ensureRuntimeSettingsCard();
   ensureQuartzBackupCard();
   ensureQuartzBackupCard();
+  ensureQuartzBackupCard();
   ensureQuartzProfilesCard();
   ensureQuartzProfilesCard();
   quartzRefreshRuntimeCard();
