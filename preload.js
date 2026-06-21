@@ -49,5 +49,11 @@ contextBridge.exposeInMainWorld('quartzAPI', {
   installISL: () => ipcRenderer.invoke('install-isl'),
   uninstallISL: () => ipcRenderer.invoke('uninstall-isl'),
 
+  getQuartzProfiles: () => ipcRenderer.invoke('get-quartz-profiles'),
+  saveQuartzProfile: (options = {}) => ipcRenderer.invoke('save-quartz-profile', options),
+  applyQuartzProfile: (profileId, options = {}) => ipcRenderer.invoke('apply-quartz-profile', profileId, options),
+  deleteQuartzProfile: (profileId) => ipcRenderer.invoke('delete-quartz-profile', profileId),
+  openQuartzProfilesFolder: () => ipcRenderer.invoke('open-quartz-profiles-folder'),
+
   openLink: (url) => ipcRenderer.invoke('open-link', url)
 });

@@ -3,6 +3,8 @@
 const state = {
   indexMods: [],
   installedMods: [],
+  quartzProfiles: [],
+  quartzProfilesBusy: false,
   indexSearch: '',
   indexTagFilter: '',
   indexSort: 'featured',
@@ -125,7 +127,10 @@ function showPage(pageId) {
 
   if (pageId === 'index') loadIndex();
   if (pageId === 'mods') loadInstalledMods(true);
-  if (pageId === 'settings') updateSettings();
+  if (pageId === 'settings') {
+    updateSettings();
+    loadQuartzProfiles(false);
+  }
   if (pageId === 'devtools') refreshDevProjects();
 }
 
@@ -2402,8 +2407,325 @@ async function autoScanQuartzModsFolder() {
   alert('Quartz Mods folder scanned.');
 }
 
+function normalizeQuartzProfiles(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.profiles)) return result.profiles;
+  if (Array.isArray(result?.items)) return result.items;
+  return [];
+}
+
+function getQuartzProfilesSettingsHost() {
+  const page = $('#settings');
+  if (!page) return null;
+
+  return (
+    page.querySelector('.settings-grid') ||
+    page.querySelector('.settings-cards') ||
+    page.querySelector('.card-grid') ||
+    page.querySelector('.page-content') ||
+    page
+  );
+}
+
+function ensureQuartzProfilesCard() {
+  if ($('#quartz-profiles-card')) return $('#quartz-profiles-card');
+
+  const host = getQuartzProfilesSettingsHost();
+  if (!host) return null;
+
+  const card = document.createElement('section');
+  card.id = 'quartz-profiles-card';
+  card.className = 'settings-card quartz-card quartz-profiles-card';
+  card.innerHTML = `
+    <div class="quartz-card-header">
+      <div>
+        <h3>Profiles / Loadouts</h3>
+        <p>Save your currently enabled mods as a loadout, then apply it later to quickly switch setups.</p>
+      </div>
+    </div>
+
+    <div class="quartz-profile-form" style="display:grid;gap:8px;margin:12px 0;max-width:680px;">
+      <label style="display:grid;gap:5px;">
+        <span class="muted small">Loadout name</span>
+        <input id="quartz-profile-name-input" type="text" placeholder="Main Loadout" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.22);color:inherit;">
+      </label>
+      <label style="display:grid;gap:5px;">
+        <span class="muted small">Description optional</span>
+        <input id="quartz-profile-desc-input" type="text" placeholder="Example: daily setup, testing setup, megahack setup..." style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.22);color:inherit;">
+      </label>
+    </div>
+
+    <div class="quartz-actions quartz-profile-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+      <button class="primary-btn small" id="quartz-save-profile-btn">Save Current Loadout</button>
+      <button class="secondary-btn small" id="quartz-refresh-profiles-btn">Refresh</button>
+      <button class="secondary-btn small" id="quartz-open-profiles-folder-btn">Open Folder</button>
+    </div>
+
+    <div id="quartz-profiles-status" class="status-text small muted">Profiles are stored locally on this device.</div>
+    <div id="quartz-profiles-list" class="quartz-profiles-list" style="display:grid;gap:10px;margin-top:12px;"></div>
+  `;
+
+  host.appendChild(card);
+
+
+  return card;
+}
+
+function setQuartzProfilesStatus(text = '') {
+  const el = $('#quartz-profiles-status');
+  if (el) el.textContent = text;
+}
+
+function renderQuartzProfiles() {
+  ensureQuartzProfilesCard();
+
+  const list = $('#quartz-profiles-list');
+  if (!list) return;
+
+  const profiles = Array.isArray(state.quartzProfiles) ? state.quartzProfiles : [];
+
+  if (!profiles.length) {
+    list.innerHTML = `
+      <div class="empty-state" style="padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;">
+        <strong>No loadouts saved yet.</strong>
+        <p>Enable/disable mods on the Installed Mods page, then come back here and save the current setup.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = '';
+
+  profiles.forEach(profile => {
+    const id = String(profile.id || '').trim();
+    const name = profile.name || id || 'Quartz Loadout';
+    const enabledCount = Number(profile.enabledCount ?? profile.enabledModIds?.length ?? 0);
+    const updatedAt = profile.updatedAt || profile.createdAt || '';
+    const description = profile.description || 'No description.';
+    const updatedLabel = updatedAt ? new Date(updatedAt).toLocaleString() : 'Unknown date';
+
+    const item = document.createElement('div');
+    item.className = 'quartz-profile-item';
+    item.style.cssText = 'padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.035);';
+    item.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="min-width:220px;flex:1;">
+          <h4 style="margin:0 0 4px;">${esc(name)}</h4>
+          <p style="margin:0 0 8px;">${esc(description)}</p>
+          <div class="muted small">${enabledCount} enabled mod(s) • Updated ${esc(updatedLabel)}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="primary-btn small" data-q-profile-apply="${esc(id)}">Apply</button>
+          <button class="danger-btn secondary-btn small" data-q-profile-delete="${esc(id)}">Delete</button>
+        </div>
+      </div>
+    `;
+
+    list.appendChild(item);
+  });
+
+}
+
+async function loadQuartzProfiles(quiet = true) {
+  ensureQuartzProfilesCard();
+
+  if (!window.quartzAPI?.getQuartzProfiles) {
+    setQuartzProfilesStatus('Profiles are not connected yet. Restart Quartz Launcher after updating.');
+    return;
+  }
+
+  try {
+    state.quartzProfilesBusy = true;
+    if (!quiet) setQuartzProfilesStatus('Loading profiles...');
+    const result = await window.quartzAPI.getQuartzProfiles();
+    state.quartzProfiles = normalizeQuartzProfiles(result);
+    renderQuartzProfiles();
+    setQuartzProfilesStatus(`${state.quartzProfiles.length} saved loadout(s).`);
+  } catch (error) {
+    setQuartzProfilesStatus(`Could not load profiles: ${error.message || error}`);
+  } finally {
+    state.quartzProfilesBusy = false;
+  }
+}
+
+async function saveCurrentQuartzProfile() {
+  setQuartzProfilesStatus('Saving current loadout...');
+
+  if (!window.quartzAPI?.saveQuartzProfile) {
+    alert('Save Profile is not connected. Restart Quartz Launcher and try again.');
+    setQuartzProfilesStatus('Save Profile is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  const nameInput = $('#quartz-profile-name-input');
+  const descInput = $('#quartz-profile-desc-input');
+
+  const fallbackName = `Quartz Loadout ${new Date().toLocaleDateString()}`;
+  const name = String(nameInput?.value || '').trim() || fallbackName;
+  const description = String(descInput?.value || '').trim();
+
+  try {
+    const result = await window.quartzAPI.saveQuartzProfile({
+      name,
+      description
+    });
+
+    if (!result?.ok) {
+      alert(`Could not save loadout:\n${getError(result)}`);
+      setQuartzProfilesStatus('Save failed.');
+      return;
+    }
+
+    if (nameInput) nameInput.value = '';
+    if (descInput) descInput.value = '';
+
+    await loadQuartzProfiles(false);
+    setStatus(`Saved loadout "${result.profile?.name || name}" with ${result.enabledCount ?? 0} enabled mod(s).`);
+    setQuartzProfilesStatus(`Saved "${result.profile?.name || name}" with ${result.enabledCount ?? 0} enabled mod(s).`);
+  } catch (error) {
+    alert(`Save Profile crashed:\n${error.message || error}`);
+    setQuartzProfilesStatus(`Save crashed: ${error.message || error}`);
+  }
+}
+
+async function applyQuartzProfile(profileId) {
+  if (!profileId) return;
+
+  if (!window.quartzAPI?.applyQuartzProfile) {
+    alert('Apply Profile is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  const profile = (state.quartzProfiles || []).find(item => String(item.id) === String(profileId));
+  const name = profile?.name || profileId;
+  const count = profile?.enabledCount ?? profile?.enabledModIds?.length ?? 0;
+
+  const ok = confirm(
+    `Apply "${name}"?\n\nThis will enable ${count} saved mod(s) and disable installed mods that are not in this loadout.`
+  );
+  if (!ok) return;
+
+  try {
+    setQuartzProfilesStatus(`Applying "${name}"...`);
+    const result = await window.quartzAPI.applyQuartzProfile(profileId, { keepExtraEnabled: false });
+
+    if (!result?.ok) {
+      const failed = Array.isArray(result?.failed) && result.failed.length
+        ? '\n\nFailed:\n' + result.failed.map(item => `${item.id}: ${item.error}`).join('\n')
+        : '';
+      alert(`Profile applied with errors:\n${getError(result)}${failed}`);
+    }
+
+    const missing = Number(result?.missingCount || 0);
+    const missingText = missing ? ` Missing ${missing} mod(s) that are not installed.` : '';
+    setStatus(`Applied "${name}": enabled ${result?.enabledCount ?? 0}, disabled ${result?.disabledCount ?? 0}.${missingText}`);
+    setQuartzProfilesStatus(`Applied "${name}".${missingText}`);
+
+    state.selectedInstalledModIds?.clear?.();
+    await refreshAll();
+    await loadQuartzProfiles(true);
+  } catch (error) {
+    alert(`Apply Profile crashed:\n${error.message || error}`);
+    setQuartzProfilesStatus('Apply crashed.');
+  }
+}
+
+async function deleteQuartzProfile(profileId) {
+  if (!profileId) return;
+
+  if (!window.quartzAPI?.deleteQuartzProfile) {
+    alert('Delete Profile is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  const profile = (state.quartzProfiles || []).find(item => String(item.id) === String(profileId));
+  const name = profile?.name || profileId;
+
+  if (!confirm(`Delete loadout "${name}"?`)) return;
+
+  try {
+    setQuartzProfilesStatus(`Deleting "${name}"...`);
+    const result = await window.quartzAPI.deleteQuartzProfile(profileId);
+
+    if (!result?.ok) {
+      alert(`Could not delete loadout:\n${getError(result)}`);
+      setQuartzProfilesStatus('Delete failed.');
+      return;
+    }
+
+    await loadQuartzProfiles(false);
+    setStatus(`Deleted loadout "${name}".`);
+  } catch (error) {
+    alert(`Delete Profile crashed:\n${error.message || error}`);
+    setQuartzProfilesStatus('Delete crashed.');
+  }
+}
+
+async function openQuartzProfilesFolder() {
+  if (!window.quartzAPI?.openQuartzProfilesFolder) {
+    alert('Open Profiles Folder is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  try {
+    const result = await window.quartzAPI.openQuartzProfilesFolder();
+    if (!result?.ok) {
+      alert(`Could not open profiles folder:\n${getError(result)}`);
+      return;
+    }
+    setQuartzProfilesStatus(`Opened profiles folder: ${result.profilesDir || ''}`);
+  } catch (error) {
+    alert(`Open Profiles Folder crashed:\n${error.message || error}`);
+  }
+}
+
+function handleQuartzProfilesDelegatedClick(event) {
+  const target = event.target?.closest?.(
+    '#quartz-save-profile-btn, #quartz-refresh-profiles-btn, #quartz-open-profiles-folder-btn, [data-q-profile-apply], [data-q-profile-delete]'
+  );
+
+  if (!target) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (target.id === 'quartz-save-profile-btn') {
+    saveCurrentQuartzProfile();
+    return;
+  }
+
+  if (target.id === 'quartz-refresh-profiles-btn') {
+    loadQuartzProfiles(false);
+    return;
+  }
+
+  if (target.id === 'quartz-open-profiles-folder-btn') {
+    openQuartzProfilesFolder();
+    return;
+  }
+
+  const applyId = target.getAttribute('data-q-profile-apply');
+  if (applyId) {
+    applyQuartzProfile(applyId);
+    return;
+  }
+
+  const deleteId = target.getAttribute('data-q-profile-delete');
+  if (deleteId) {
+    deleteQuartzProfile(deleteId);
+  }
+}
+
+function installQuartzProfilesDelegatedClickHandler() {
+  if (window.__quartzProfilesDelegatedClickInstalled) return;
+  window.__quartzProfilesDelegatedClickInstalled = true;
+  document.addEventListener('click', handleQuartzProfilesDelegatedClick);
+}
+
 async function updateSettings() {
   ensureRuntimeSettingsCard();
+  ensureQuartzProfilesCard();
+  ensureQuartzProfilesCard();
   quartzRefreshRuntimeCard();
 
   if (!window.quartzAPI?.getModStatus) return;
@@ -3608,6 +3930,7 @@ function bindButtons() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  installQuartzProfilesDelegatedClickHandler();
   addStyles();
   bindButtons();
   ensureIndexTools();

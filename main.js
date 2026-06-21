@@ -5407,6 +5407,295 @@ try {
   ipcMain.removeHandler('export-installed-mod-list');
 } catch {}
 
+// ===== Quartz Profiles / Loadouts START =====
+// Stores named loadouts of enabled Quartz mods and can apply them later.
+// Profiles live in the normal QuartzLauncher data folder, not in the repo.
+function qProfilesDir() {
+  return path.join(qNativeDataDir(), 'profiles');
+}
+
+function qEnsureProfilesDir() {
+  const dir = qProfilesDir();
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function qProfileCleanText(value, fallback = '') {
+  return String(value ?? fallback).replace(/\s+/g, ' ').trim();
+}
+
+function qProfileSlug(value, fallback = 'profile') {
+  const base = qProfileCleanText(value, fallback)
+    .toLowerCase()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+  return base || fallback;
+}
+
+function qProfilePath(profileId) {
+  const safeId = qProfileSlug(profileId, 'profile');
+  return path.join(qEnsureProfilesDir(), `${safeId}.json`);
+}
+
+function qProfileModId(mod) {
+  return String(
+    mod?.id ||
+    mod?.packageId ||
+    mod?.modId ||
+    mod?.slug ||
+    ''
+  ).trim();
+}
+
+function qProfileModEnabled(mod) {
+  const id = qProfileModId(mod);
+  if (!id) return false;
+
+  try {
+    if (typeof qIsQuartzModEnabled === 'function') {
+      return !!qIsQuartzModEnabled(id);
+    }
+  } catch (_) {}
+
+  if (mod?.disabled === true) return false;
+  if (mod?.enabled === false) return false;
+  return true;
+}
+
+function qProfileSnapshotInstalledMods() {
+  const installed = typeof qInstalledModsWithEnabledState === 'function'
+    ? qInstalledModsWithEnabledState()
+    : [];
+
+  return installed
+    .map(mod => {
+      const id = qProfileModId(mod);
+      if (!id) return null;
+
+      return {
+        id,
+        name: qProfileCleanText(mod.name || mod.title || id, id),
+        version: qProfileCleanText(mod.version || mod.modVersion || ''),
+        author: qProfileCleanText(mod.author || mod.developer || ''),
+        enabled: qProfileModEnabled(mod)
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function qReadQuartzProfileFile(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const profile = JSON.parse(raw);
+    if (!profile || typeof profile !== 'object') return null;
+
+    const id = qProfileSlug(profile.id || path.basename(filePath, '.json'), 'profile');
+    const enabledModIds = Array.isArray(profile.enabledModIds)
+      ? profile.enabledModIds.map(id => String(id).trim()).filter(Boolean)
+      : [];
+
+    return {
+      format: profile.format || 'quartz.launcher.profile.v1',
+      id,
+      name: qProfileCleanText(profile.name || id, id),
+      description: qProfileCleanText(profile.description || ''),
+      createdAt: profile.createdAt || '',
+      updatedAt: profile.updatedAt || '',
+      enabledModIds,
+      enabledCount: enabledModIds.length,
+      installedSnapshot: Array.isArray(profile.installedSnapshot) ? profile.installedSnapshot : []
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+function qListQuartzProfiles() {
+  const dir = qEnsureProfilesDir();
+  const profiles = fs.readdirSync(dir)
+    .filter(name => name.toLowerCase().endsWith('.json'))
+    .map(name => qReadQuartzProfileFile(path.join(dir, name)))
+    .filter(Boolean)
+    .sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')));
+
+  return {
+    ok: true,
+    profiles,
+    count: profiles.length,
+    profilesDir: dir
+  };
+}
+
+function qCreateQuartzProfile(options = {}) {
+  const now = new Date().toISOString();
+  const name = qProfileCleanText(options.name || 'My Quartz Loadout', 'My Quartz Loadout').slice(0, 90);
+  const description = qProfileCleanText(options.description || '').slice(0, 240);
+
+  const snapshot = qProfileSnapshotInstalledMods();
+  const enabledModIds = snapshot
+    .filter(mod => mod.enabled)
+    .map(mod => mod.id)
+    .filter(Boolean);
+
+  const dir = qEnsureProfilesDir();
+  const baseId = qProfileSlug(options.id || name, 'profile');
+  let id = baseId;
+  let i = 2;
+  while (fs.existsSync(path.join(dir, `${id}.json`))) {
+    id = `${baseId}-${i}`;
+    i += 1;
+  }
+
+  const profile = {
+    format: 'quartz.launcher.profile.v1',
+    id,
+    name,
+    description,
+    createdAt: now,
+    updatedAt: now,
+    enabledModIds,
+    enabledCount: enabledModIds.length,
+    installedSnapshot: snapshot
+  };
+
+  const filePath = path.join(dir, `${id}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(profile, null, 2));
+
+  return {
+    ok: true,
+    profile,
+    filePath,
+    profilesDir: dir,
+    enabledCount: enabledModIds.length,
+    installedCount: snapshot.length
+  };
+}
+
+function qApplyQuartzProfile(profileId, options = {}) {
+  const filePath = qProfilePath(profileId);
+  const profile = qReadQuartzProfileFile(filePath);
+
+  if (!profile) {
+    return {
+      ok: false,
+      error: `Profile not found: ${profileId}`
+    };
+  }
+
+  const installed = qProfileSnapshotInstalledMods();
+  const installedIds = new Set(installed.map(mod => mod.id));
+  const wantedEnabledIds = new Set(profile.enabledModIds || []);
+
+  let enabledCount = 0;
+  let disabledCount = 0;
+  const failed = [];
+
+  for (const mod of installed) {
+    const id = mod.id;
+    if (!id) continue;
+
+    try {
+      if (wantedEnabledIds.has(id)) {
+        qEnableQuartzMod(id);
+        enabledCount += 1;
+      } else if (!options.keepExtraEnabled) {
+        qDisableQuartzMod(id);
+        disabledCount += 1;
+      }
+    } catch (error) {
+      failed.push({
+        id,
+        error: error?.message || String(error)
+      });
+    }
+  }
+
+  const missingModIds = [...wantedEnabledIds].filter(id => !installedIds.has(id));
+
+  let runtime = null;
+  try {
+    if (typeof qBuildRuntimeManifest === 'function') {
+      runtime = qBuildRuntimeManifest();
+    }
+  } catch (error) {
+    failed.push({
+      id: 'runtime-sync',
+      error: error?.message || String(error)
+    });
+  }
+
+  return {
+    ok: failed.length === 0,
+    profile,
+    enabledCount,
+    disabledCount,
+    missingModIds,
+    missingCount: missingModIds.length,
+    failed,
+    runtime,
+    profilesDir: qProfilesDir()
+  };
+}
+
+function qDeleteQuartzProfile(profileId) {
+  const filePath = qProfilePath(profileId);
+  if (!fs.existsSync(filePath)) {
+    return {
+      ok: false,
+      error: `Profile not found: ${profileId}`
+    };
+  }
+
+  fs.rmSync(filePath, { force: true });
+
+  return {
+    ok: true,
+    deletedId: qProfileSlug(profileId, 'profile'),
+    profilesDir: qProfilesDir()
+  };
+}
+
+for (const channel of [
+  'get-quartz-profiles',
+  'save-quartz-profile',
+  'apply-quartz-profile',
+  'delete-quartz-profile',
+  'open-quartz-profiles-folder'
+]) {
+  try {
+    ipcMain.removeHandler(channel);
+  } catch (_) {}
+}
+
+ipcMain.handle('get-quartz-profiles', async () => {
+  return qListQuartzProfiles();
+});
+
+ipcMain.handle('save-quartz-profile', async (_event, options = {}) => {
+  return qCreateQuartzProfile(options);
+});
+
+ipcMain.handle('apply-quartz-profile', async (_event, profileId, options = {}) => {
+  return qApplyQuartzProfile(profileId, options);
+});
+
+ipcMain.handle('delete-quartz-profile', async (_event, profileId) => {
+  return qDeleteQuartzProfile(profileId);
+});
+
+ipcMain.handle('open-quartz-profiles-folder', async () => {
+  const dir = qEnsureProfilesDir();
+  await shell.openPath(dir);
+  return {
+    ok: true,
+    profilesDir: dir
+  };
+});
+// ===== Quartz Profiles / Loadouts END =====
+
 ipcMain.handle('export-installed-mod-list', async (_event, rendererMods = []) => {
   try {
     let mods = Array.isArray(rendererMods) ? rendererMods : [];
