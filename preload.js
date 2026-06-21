@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('quartzAPI', {
+  getPublicIndexLocal: () => ipcRenderer.invoke('get-public-index-local'),
   launchGD: () => ipcRenderer.invoke('launch-gd'),
 
   getQuartzIndex: (options = {}) => ipcRenderer.invoke('get-quartz-index', options),

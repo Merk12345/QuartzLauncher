@@ -4,6 +4,8 @@ const state = {
   indexMods: [],
   installedMods: [],
   indexSearch: '',
+  indexTagFilter: '',
+  indexSort: 'featured',
   indexPage: 1,
   selectedIndexModIds: new Set(),
   installedPage: 1,
@@ -775,6 +777,160 @@ function addStyles() {
     .support-btn:hover {
       background: rgba(255,255,255,0.18);
     }
+
+    .quartz-index-sort {
+      min-height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: rgba(245,247,255,0.95);
+      padding: 9px 12px;
+      outline: none;
+    }
+
+    .quartz-index-sort option {
+      color: #111827;
+    }
+
+    .quartz-tag-filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
+
+    .quartz-tag-filter-btn {
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.07);
+      color: rgba(245,247,255,0.82);
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .quartz-tag-filter-btn.active {
+      border-color: rgba(102,217,255,0.75);
+      background: rgba(102,217,255,0.18);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .quartz-details-modal[hidden] {
+      display: none;
+    }
+
+    .quartz-details-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      background: rgba(0,0,0,0.68);
+      padding: 22px;
+    }
+
+    .quartz-details-card {
+      width: min(780px, 96vw);
+      max-height: 88vh;
+      overflow: auto;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(12,16,30,0.98);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+      padding: 18px;
+    }
+
+    .quartz-details-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .quartz-details-title {
+      display: flex;
+      gap: 13px;
+      align-items: center;
+    }
+
+    .quartz-details-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      object-fit: cover;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .quartz-details-title h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .quartz-details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .quartz-details-row {
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px;
+    }
+
+    .quartz-details-row strong {
+      display: block;
+      color: rgba(245,247,255,0.70);
+      font-size: 11px;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .quartz-details-section {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .quartz-details-section h3 {
+      margin: 0 0 7px;
+      font-size: 15px;
+    }
+
+    .quartz-details-text {
+      white-space: pre-wrap;
+      color: rgba(245,247,255,0.82);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 720px) {
+      .quartz-details-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    .quartz-index-debug {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(102,217,255,0.22);
+      background: rgba(102,217,255,0.08);
+      color: rgba(245,247,255,0.82);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
   `;
 
   document.head.appendChild(style);
@@ -844,29 +1000,344 @@ function filterAndPage(mods, search, page) {
   };
 }
 
-function getFilteredIndexModsForSelection() {
-  const query = String(state.indexSearch || '').trim().toLowerCase();
 
-  if (!query) return [...state.indexMods];
+function quartzWithTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(label || 'Operation timed out')), ms);
+    })
+  ]);
+}
 
-  return state.indexMods.filter(mod => {
-    const haystack = [
-      getModId(mod),
-      getModName(mod),
-      mod.description,
-      mod.developer,
-      mod.author,
-      mod.category,
-      mod.engine,
-      ...(Array.isArray(mod.tags) ? mod.tags : [])
-    ].join(' ').toLowerCase();
+function updateIndexDebug(meta = {}, allCount = 0, installedCount = 0, availableCount = 0, error = '') {
+  // Debug UI is hidden in normal builds. Keep this function as a safe no-op.
+}
 
-    return haystack.includes(query);
+function getIndexModTags(mod) {
+  return Array.isArray(mod?.tags)
+    ? mod.tags.map(tag => String(tag || '').trim()).filter(Boolean)
+    : [];
+}
+
+function indexModMatchesSearch(mod, search) {
+  const query = String(search || '').trim().toLowerCase();
+
+  if (!query) return true;
+
+  const haystack = [
+    getModId(mod),
+    getModName(mod),
+    mod.description,
+    mod.developer,
+    mod.author,
+    mod.category,
+    mod.engine,
+    mod.type,
+    mod.source,
+    ...getIndexModTags(mod)
+  ].join(' ').toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function indexModMatchesTag(mod, tag) {
+  const wanted = String(tag || '').trim().toLowerCase();
+
+  if (!wanted) return true;
+
+  return getIndexModTags(mod).some(item => item.toLowerCase() === wanted);
+}
+
+function getIndexDateValue(mod, fields = []) {
+  for (const field of fields) {
+    const value = mod?.[field];
+
+    if (!value) continue;
+
+    const time = Date.parse(value);
+    if (!Number.isNaN(time)) return time;
+  }
+
+  return 0;
+}
+
+function sortIndexMods(mods) {
+  const sort = state.indexSort || 'featured';
+
+  const byName = (a, b) => getModName(a).localeCompare(getModName(b));
+  const byDeveloper = (a, b) => String(a.developer || a.author || '').localeCompare(String(b.developer || b.author || '')) || byName(a, b);
+  const byCategory = (a, b) => String(a.category || '').localeCompare(String(b.category || '')) || byName(a, b);
+
+  return [...mods].sort((a, b) => {
+    if (sort === 'name') return byName(a, b);
+    if (sort === 'developer') return byDeveloper(a, b);
+    if (sort === 'category') return byCategory(a, b);
+
+    if (sort === 'newest') {
+      const aTime = getIndexDateValue(a, ['publishedAt', 'createdAt', 'approvedAt', 'date', 'addedAt']);
+      const bTime = getIndexDateValue(b, ['publishedAt', 'createdAt', 'approvedAt', 'date', 'addedAt']);
+      return (bTime - aTime) || byName(a, b);
+    }
+
+    if (sort === 'updated') {
+      const aTime = getIndexDateValue(a, ['updatedAt', 'lastUpdated', 'modifiedAt', 'featuredAt']);
+      const bTime = getIndexDateValue(b, ['updatedAt', 'lastUpdated', 'modifiedAt', 'featuredAt']);
+      return (bTime - aTime) || byName(a, b);
+    }
+
+    const aFeatured = a.featured ? 1 : 0;
+    const bFeatured = b.featured ? 1 : 0;
+
+    if (aFeatured !== bFeatured) return bFeatured - aFeatured;
+
+    const aRank = Number.isFinite(Number(a.featuredRank)) ? Number(a.featuredRank) : 999999;
+    const bRank = Number.isFinite(Number(b.featuredRank)) ? Number(b.featuredRank) : 999999;
+
+    return (aRank - bRank) || byName(a, b);
   });
 }
 
+function getIndexFilteredSortedMods() {
+  const filtered = state.indexMods.filter(mod => {
+    return indexModMatchesTag(mod, state.indexTagFilter) &&
+      indexModMatchesSearch(mod, state.indexSearch);
+  });
+
+  return sortIndexMods(filtered);
+}
+
+function getIndexPageData() {
+  const mods = getIndexFilteredSortedMods();
+  const pageSize = Math.max(1, Number(state.pageSize || 12));
+  const total = mods.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(Math.max(1, Number(state.indexPage || 1)), totalPages);
+  const start = (page - 1) * pageSize;
+
+  return {
+    mods: mods.slice(start, start + pageSize),
+    page,
+    total,
+    totalPages
+  };
+}
+
+function getPopularIndexTags() {
+  const counts = new Map();
+
+  state.indexMods.forEach(mod => {
+    getIndexModTags(mod).forEach(tag => {
+      const clean = String(tag || '').trim();
+      if (!clean) return;
+
+      const key = clean.toLowerCase();
+      const existing = counts.get(key) || { tag: clean, count: 0 };
+      existing.count += 1;
+      counts.set(key, existing);
+    });
+  });
+
+  const preferred = [
+    'UI',
+    'Gameplay',
+    'Joke',
+    'Utility',
+    'Visual',
+    'Editor',
+    'Practice',
+    'Performance',
+    'Music',
+    'Cosmetic',
+    'Quality of Life',
+    'Quartz Native',
+    'Geode',
+    'Geode Compatibility',
+    'cheat',
+    'offline'
+  ];
+
+  const preferredKeys = new Set(preferred.map(tag => tag.toLowerCase()));
+  const preferredItems = preferred
+    .map(tag => counts.get(tag.toLowerCase()))
+    .filter(Boolean);
+
+  const otherItems = [...counts.values()]
+    .filter(item => !preferredKeys.has(item.tag.toLowerCase()))
+    .sort((a, b) => (b.count - a.count) || a.tag.localeCompare(b.tag))
+    .slice(0, 18);
+
+  return [...preferredItems, ...otherItems];
+}
+
+function renderIndexTagFilters() {
+  const host = $('#quartz-index-tag-filters');
+
+  if (!host) return;
+
+  const tags = getPopularIndexTags();
+
+  if (!tags.length) {
+    host.innerHTML = '';
+    return;
+  }
+
+  const active = String(state.indexTagFilter || '').trim().toLowerCase();
+
+  host.innerHTML = `
+    <button class="quartz-tag-filter-btn ${!active ? 'active' : ''}" data-index-tag="">All Tags</button>
+    ${tags.map(item => `
+      <button class="quartz-tag-filter-btn ${active === item.tag.toLowerCase() ? 'active' : ''}" data-index-tag="${esc(item.tag)}">
+        ${esc(item.tag)} <span class="muted">(${item.count})</span>
+      </button>
+    `).join('')}
+  `;
+
+  host.querySelectorAll('.quartz-tag-filter-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      state.indexTagFilter = button.dataset.indexTag || '';
+      state.indexPage = 1;
+      renderIndex();
+    });
+  });
+}
+
+function clearIndexDiscoveryFilters() {
+  state.indexSearch = '';
+  state.indexTagFilter = '';
+  state.indexSort = 'featured';
+  state.indexPage = 1;
+
+  const search = $('#quartz-index-search');
+  const sort = $('#quartz-index-sort');
+
+  if (search) search.value = '';
+  if (sort) sort.value = state.indexSort;
+
+  renderIndex();
+  setStatus('Cleared Index search, tag filter, and sort.');
+}
+
+function closeQuartzModDetails() {
+  const modal = $('#quartz-details-modal');
+
+  if (modal) {
+    modal.hidden = true;
+  }
+}
+
+function ensureQuartzDetailsModal() {
+  let modal = $('#quartz-details-modal');
+
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'quartz-details-modal';
+  modal.className = 'quartz-details-modal';
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="quartz-details-card" role="dialog" aria-modal="true" aria-label="Quartz mod details">
+      <div class="quartz-details-header">
+        <div id="quartz-details-heading"></div>
+        <button class="secondary-btn small" id="quartz-details-close-btn">Close</button>
+      </div>
+      <div id="quartz-details-body"></div>
+    </div>
+  `;
+
+  modal.addEventListener('click', event => {
+    if (event.target === modal) closeQuartzModDetails();
+  });
+
+  document.body.appendChild(modal);
+
+  $('#quartz-details-close-btn')?.addEventListener('click', closeQuartzModDetails);
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeQuartzModDetails();
+  });
+
+  return modal;
+}
+
+function openQuartzModDetails(mod, mode = 'index') {
+  const modal = ensureQuartzDetailsModal();
+  const heading = $('#quartz-details-heading');
+  const body = $('#quartz-details-body');
+
+  if (!modal || !heading || !body) return;
+
+  const id = getModId(mod);
+  const name = getModName(mod);
+  const icon = mod.iconDataUrl || mod.iconUrl || '';
+  const tags = getIndexModTags(mod);
+  const detailsText = mod.detailsText || mod.readme || mod.about || mod.description || '';
+  const changelogText = mod.changelogText || mod.changelog || '';
+
+  const rows = [
+    ['ID', id],
+    ['Developer', mod.developer || mod.author || 'Unknown'],
+    ['Version', mod.version || 'Unknown'],
+    ['Category', mod.category || 'Uncategorized'],
+    ['Engine/Type', mod.engine || mod.type || 'Unknown'],
+    ['Source', mod.source || mod.indexSource || 'Unknown'],
+    ['Package', mod.packageFile || mod.packageUrl || mod.packagePath || ''],
+    ['Status', mode === 'installed' || mod.installed ? 'Installed' : 'Available']
+  ].filter(([, value]) => String(value || '').trim());
+
+  heading.innerHTML = `
+    <div class="quartz-details-title">
+      ${icon ? `<img class="quartz-details-icon" src="${esc(icon)}" alt="">` : ''}
+      <div>
+        <h2>${esc(name)}</h2>
+        <div class="muted">${esc(id)}</div>
+      </div>
+    </div>
+  `;
+
+  body.innerHTML = `
+    <p>${esc(mod.description || 'No description provided.')}</p>
+
+    ${tags.length ? `
+      <div class="quartz-tag-row">
+        ${tags.map(tag => `<span class="quartz-pill quartz-tag-pill">${esc(tag)}</span>`).join('')}
+      </div>
+    ` : ''}
+
+    <div class="quartz-details-grid">
+      ${rows.map(([label, value]) => `
+        <div class="quartz-details-row">
+          <strong>${esc(label)}</strong>
+          <span>${esc(value)}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    ${detailsText ? `
+      <div class="quartz-details-section">
+        <h3>Details</h3>
+        <div class="quartz-details-text">${esc(detailsText)}</div>
+      </div>
+    ` : ''}
+
+    ${changelogText ? `
+      <div class="quartz-details-section">
+        <h3>Changelog</h3>
+        <div class="quartz-details-text">${esc(changelogText)}</div>
+      </div>
+    ` : ''}
+  `;
+
+  modal.hidden = false;
+}
+
+
+function getFilteredIndexModsForSelection() {
+  return getIndexFilteredSortedMods();
+}
+
 function getShownIndexModsForSelection() {
-  return filterAndPage(state.indexMods, state.indexSearch, state.indexPage).mods;
+  return getIndexPageData().mods;
 }
 
 function pruneSelectedIndexMods() {
@@ -1008,11 +1479,13 @@ function createModCard(mod, mode) {
 
   const actionHtml = mode === 'installed'
     ? `
-      <button class="secondary-btn small quartz-toggle-btn">${enabled ? 'Disable' : 'Enable'}</button>
+      <button class="secondary-btn small quartz-details-btn">Details</button>
+    <button class="secondary-btn small quartz-toggle-btn">${enabled ? 'Disable' : 'Enable'}</button>
       <button class="secondary-btn small quartz-uninstall-btn quartz-danger">Uninstall</button>
     `
     : `
-      <button class="primary-btn small quartz-install-btn">Install</button>
+      <button class="secondary-btn small quartz-details-btn">Details</button>
+    <button class="primary-btn small quartz-install-btn">Install</button>
     `;
 
   card.innerHTML = `
@@ -1040,6 +1513,11 @@ function createModCard(mod, mode) {
       ${actionHtml}
     </div>
   `;
+
+  card.querySelector('.quartz-details-btn')?.addEventListener('click', event => {
+    event.preventDefault();
+    openQuartzModDetails(mod, mode);
+  });
 
   card.querySelector('.quartz-index-select-input')?.addEventListener('change', event => {
     setIndexModSelected(id, event.currentTarget.checked);
@@ -1154,41 +1632,72 @@ async function refreshQuartzIndex(event) {
 
 
 function ensureIndexTools() {
-  const indexPage = $('#index');
   const grid = $('#indexGrid');
 
-  if (!indexPage || !grid) return;
+  if (!grid) return;
 
-  if ($('#quartz-index-tools')) return;
+  let tools = $('#quartz-index-tools');
 
-  const tools = document.createElement('div');
-  tools.id = 'quartz-index-tools';
-  tools.className = 'quartz-toolbar';
+  if (!tools) {
+    tools = document.createElement('div');
+    tools.id = 'quartz-index-tools';
+    tools.className = 'quartz-toolbar';
+    grid.parentElement.insertBefore(tools, grid);
+  }
+
   tools.innerHTML = `
     <input id="quartz-index-search" class="quartz-search" placeholder="Search Quartz mods..." />
+    <select id="quartz-index-sort" class="quartz-index-sort" title="Sort Index mods">
+      <option value="featured">Featured First</option>
+      <option value="newest">Newest</option>
+      <option value="updated">Recently Updated</option>
+      <option value="name">A-Z</option>
+      <option value="developer">Developer</option>
+      <option value="category">Category</option>
+    </select>
+    <button class="secondary-btn small" id="quartz-clear-index-filters-btn">Clear Filters</button>
     <span id="quartz-index-selected-count" class="quartz-selected-count">0 selected</span>
+    <span id="quartz-index-install-progress" class="quartz-index-install-progress" hidden></span>
     <button class="secondary-btn small" id="quartz-select-shown-index-btn">Select Shown</button>
+    <button class="secondary-btn small" id="quartz-select-results-index-btn">Select Results</button>
     <button class="secondary-btn small" id="quartz-clear-selected-index-btn" disabled>Clear Selected</button>
     <button class="primary-btn small" id="quartz-install-selected-index-btn" disabled>Install Selected</button>
     <button class="secondary-btn small" id="quartz-refresh-index-btn">Refresh Index</button>
     <button class="secondary-btn small" id="quartz-scan-mods-folder-btn">Scan Mods Folder</button>
     <button class="secondary-btn small" id="quartz-open-mods-folder-btn">Open Mods Folder</button>
+    <div id="quartz-index-tag-filters" class="quartz-tag-filter-row"></div>
   `;
 
-  grid.before(tools);
+  const searchInput = $('#quartz-index-search');
+  const sortSelect = $('#quartz-index-sort');
 
-  $('#quartz-index-search')?.addEventListener('input', event => {
-    state.indexSearch = event.target.value || '';
-    state.indexPage = 1;
-    renderIndex();
-  });
+  if (searchInput) {
+    searchInput.value = state.indexSearch || '';
+    searchInput.addEventListener('input', event => {
+      state.indexSearch = event.target.value || '';
+      state.indexPage = 1;
+      renderIndex();
+    });
+  }
 
+  if (sortSelect) {
+    sortSelect.value = state.indexSort || 'featured';
+    sortSelect.addEventListener('change', event => {
+      state.indexSort = event.target.value || 'featured';
+      state.indexPage = 1;
+      renderIndex();
+    });
+  }
+
+  $('#quartz-clear-index-filters-btn')?.addEventListener('click', clearIndexDiscoveryFilters);
   $('#quartz-select-shown-index-btn')?.addEventListener('click', selectShownIndexMods);
+  $('#quartz-select-results-index-btn')?.addEventListener('click', selectFilteredIndexMods);
   $('#quartz-clear-selected-index-btn')?.addEventListener('click', clearSelectedIndexMods);
   $('#quartz-install-selected-index-btn')?.addEventListener('click', installSelectedIndexMods);
   $('#quartz-refresh-index-btn')?.addEventListener('click', refreshQuartzIndex);
   $('#quartz-scan-mods-folder-btn')?.addEventListener('click', autoScanQuartzModsFolder);
   $('#quartz-open-mods-folder-btn')?.addEventListener('click', openQuartzModsFolder);
+
   updateIndexBulkUi();
 }
 
@@ -1226,30 +1735,89 @@ function ensureIndexPager() {
 }
 
 async function loadIndex() {
-  const grid = $('#indexGrid');
-  if (!grid || !window.quartzAPI?.getQuartzIndex) return;
+  setStatus('Loading Quartz Index...');
 
-  ensureIndexTools();
-
-  grid.classList.add('quartz-grid');
-  grid.innerHTML = '<div class="quartz-empty">Loading Quartz mods...</div>';
+  if (typeof updateIndexDebug === 'function') {
+    updateIndexDebug({}, 0, 0, 0, 'Loading public index...');
+  }
 
   try {
-    const [indexResult, installedResult] = await Promise.all([
-      window.quartzAPI.getQuartzIndex({ page: 1, pageSize: 5000, category: 'All' }),
-      window.quartzAPI.getInstalledMods ? window.quartzAPI.getInstalledMods() : Promise.resolve({ mods: [] })
-    ]);
+    let indexResult = null;
+
+    if (window.quartzAPI.getPublicIndexLocal) {
+      indexResult = await quartzWithTimeout(
+        window.quartzAPI.getPublicIndexLocal(),
+        5000,
+        'Clean local public index timed out.'
+      );
+    } else {
+      indexResult = await quartzWithTimeout(
+        window.quartzAPI.getQuartzIndex({ page: 1, pageSize: 5000, category: 'All' }),
+        5000,
+        'Legacy Quartz index timed out.'
+      );
+    }
+
+    if (!isOk(indexResult)) {
+      throw new Error(getError(indexResult));
+    }
 
     const allMods = normalizeIndexMods(indexResult);
-    const installed = normalizeInstalledMods(installedResult);
-    const installedIds = new Set(installed.map(getModId));
+    const meta = indexResult?.index?.meta || {};
 
-    state.indexMods = allMods.filter(mod => !installedIds.has(getModId(mod)));
+    if (typeof updateIndexDebug === 'function') {
+      updateIndexDebug(meta, allMods.length, 0, allMods.length, 'Public index loaded. Checking installed mods...');
+    }
+
+    let installed = [];
+
+    try {
+      const installedResult = await quartzWithTimeout(
+        window.quartzAPI.getInstalledMods(),
+        5000,
+        'Installed mods check timed out.'
+      );
+
+      installed = normalizeInstalledMods(installedResult);
+    } catch (installedError) {
+      console.warn('[Quartz Index] Installed mods check failed:', installedError);
+      setStatus(`Index loaded, but installed-mod filter failed: ${installedError.message || installedError}`);
+    }
+
+    const installedIds = new Set(installed.map(getModId).filter(Boolean));
+
+    state.indexMods = allMods.filter(mod => {
+      const id = getModId(mod);
+      return id && !installedIds.has(id);
+    });
+
+    console.log('[Quartz Index Load]', {
+      receivedFromBackend: allMods.length,
+      installedFromModsPage: installedIds.size,
+      availableAfterFrontendFilter: state.indexMods.length,
+      backendMeta: meta
+    });
+
+    setStatus(`Index loaded: ${state.indexMods.length} available / ${allMods.length} total. Source: ${meta.source || 'unknown'}`);
+
+    if (typeof updateIndexDebug === 'function') {
+      updateIndexDebug(meta, allMods.length, installedIds.size, state.indexMods.length);
+    }
+
     pruneSelectedIndexMods();
-
     renderIndex();
   } catch (error) {
-    grid.innerHTML = `<div class="quartz-error">Could not load Index.<br>${esc(error.message || error)}</div>`;
+    console.error('[Quartz Index] load failed:', error);
+
+    state.indexMods = [];
+
+    setStatus(`Failed to load Quartz Index: ${error.message || error}`);
+
+    if (typeof updateIndexDebug === 'function') {
+      updateIndexDebug({}, 0, 0, 0, error.message || String(error));
+    }
+
+    renderIndex();
   }
 }
 
@@ -1257,7 +1825,7 @@ function renderIndex() {
   const grid = $('#indexGrid');
   if (!grid) return;
 
-  const pageData = filterAndPage(state.indexMods, state.indexSearch, state.indexPage);
+  const pageData = getIndexPageData();
   state.indexPage = pageData.page;
 
   grid.classList.add('quartz-grid');
@@ -1266,8 +1834,8 @@ function renderIndex() {
   if (state.indexMods.length === 0) {
     grid.innerHTML = `
       <div class="quartz-empty">
-        <h3>All Quartz mods are installed</h3>
-        <p>You have installed all currently available Quartz mods. New packages will show here when they are added.</p>
+        <h3>No available Index mods shown</h3>
+        <p>Quartz did not receive any available Index mods to show. Try Refresh Index, or check the terminal for index loading errors.</p>
         <button class="primary-btn small" id="quartz-view-installed-from-index">View Installed Mods</button>
       </div>
     `;

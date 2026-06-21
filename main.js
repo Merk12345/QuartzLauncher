@@ -3792,7 +3792,11 @@ ipcMain.handle('get-quartz-index', async (event, options = {}) => {
     const installedMods = allMods.filter(mod => mod.installed);
     const availableMods = allMods.filter(mod => !mod.installed);
 
-    const filtered = qFilterQuartzPackages(availableMods, {
+    // Important:
+    // Return the full public index to the renderer.
+    // The renderer is responsible for hiding installed mods using getInstalledMods().
+    // This prevents the Index from accidentally thinking all 900+ mods are installed.
+    const filtered = qFilterQuartzPackages(allMods, {
       ...options,
       category: options.category === 'Installed' ? 'All' : options.category
     });
@@ -4621,3 +4625,779 @@ function qFindAvailableQuartzPackage(packageId) {
 }
 
 // ===== Quartz Remote Index Display Override END =====
+
+
+// ===== Quartz Final Public Index Override START =====
+// This MUST stay near the bottom of main.js.
+// It guarantees the renderer receives the full public index.
+// The renderer is the only layer that hides installed mods.
+try {
+  ipcMain.removeHandler('get-quartz-index');
+} catch {}
+
+ipcMain.handle('get-quartz-index', async (_event, options = {}) => {
+  try {
+    const safeOptions = {
+      ...options,
+      category: options.category === 'Installed' ? 'All' : options.category,
+      pageSize: Number(options.pageSize || 5000)
+    };
+
+    let indexListResult = {
+      mods: [],
+      source: 'unknown',
+      error: null
+    };
+
+    if (typeof qListAvailableQuartzPackagesForIndexDisplay === 'function') {
+      indexListResult = await qListAvailableQuartzPackagesForIndexDisplay();
+    } else if (typeof qAvailableModsWithEnabledState === 'function') {
+      indexListResult = {
+        mods: qAvailableModsWithEnabledState(),
+        source: 'native-library-fallback',
+        error: null
+      };
+    } else if (typeof qListAvailableQuartzPackages === 'function') {
+      indexListResult = {
+        mods: qListAvailableQuartzPackages(),
+        source: 'legacy-library-fallback',
+        error: null
+      };
+    }
+
+    const rawMods = Array.isArray(indexListResult.mods) ? indexListResult.mods : [];
+
+    const allMods = rawMods
+      .filter(Boolean)
+      .map(mod => {
+        const installed = !!mod.installed;
+
+        return {
+          ...mod,
+          installed,
+          enabled: installed && typeof qIsQuartzModEnabled === 'function'
+            ? qIsQuartzModEnabled(mod.id)
+            : !!mod.enabled
+        };
+      });
+
+    const installedMods = allMods.filter(mod => mod.installed);
+    const availableMods = allMods.filter(mod => !mod.installed);
+
+    const filtered = typeof qFilterQuartzPackages === 'function'
+      ? qFilterQuartzPackages(allMods, safeOptions)
+      : allMods;
+
+    const paged = typeof qPageQuartzPackages === 'function'
+      ? qPageQuartzPackages(filtered, safeOptions)
+      : {
+          mods: filtered,
+          meta: {
+            page: 1,
+            pageSize: safeOptions.pageSize,
+            total: filtered.length,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false,
+            source: indexListResult.source || 'final-public-index'
+          }
+        };
+
+    return {
+      ok: true,
+      quartzDataDir: typeof QUARTZ_NATIVE_DATA_DIR !== 'undefined' ? QUARTZ_NATIVE_DATA_DIR : null,
+      quartzLibraryDir: typeof QUARTZ_NATIVE_LIBRARY_DIR !== 'undefined' ? QUARTZ_NATIVE_LIBRARY_DIR : null,
+      quartzEnabledDir: typeof QUARTZ_NATIVE_ENABLED_DIR !== 'undefined' ? QUARTZ_NATIVE_ENABLED_DIR : null,
+      index: {
+        mods: paged.mods,
+        meta: {
+          ...paged.meta,
+          allCount: allMods.length,
+          installedCount: installedMods.length,
+          availableCount: availableMods.length,
+          allInstalled: allMods.length > 0 && availableMods.length === 0,
+          source: indexListResult.source || paged.meta.source || 'final-public-index',
+          backendMode: 'full-public-index-final-override',
+          liveIndexUrl: typeof QUARTZ_PUBLIC_INDEX_URL !== 'undefined' ? QUARTZ_PUBLIC_INDEX_URL : null,
+          fallbackError: indexListResult.error || null
+        }
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      index: {
+        mods: [],
+        meta: {
+          page: 1,
+          pageSize: Number(options.pageSize || 5000),
+          total: 0,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: 0,
+          installedCount: 0,
+          availableCount: 0,
+          allInstalled: false,
+          source: 'final-public-index-error',
+          backendMode: 'full-public-index-final-override'
+        }
+      }
+    };
+  }
+});
+// ===== Quartz Final Public Index Override END =====
+
+
+// ===== Quartz Hard Public Index Loader START =====
+// Final override: the Index page must receive the real public index.
+// This bypasses older stacked get-quartz-index handlers that may return only installed/local mods.
+function qHardExtractPublicIndexMods(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.mods)) return raw.mods;
+  if (Array.isArray(raw?.packages)) return raw.packages;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw?.items)) return raw.items;
+  return [];
+}
+
+function qHardSafeText(value) {
+  return String(value || '').trim();
+}
+
+function qHardPackageUrl(entry) {
+  const raw =
+    entry.packageUrl ||
+    entry.downloadUrl ||
+    entry.downloadURL ||
+    entry.url ||
+    entry.packageFile ||
+    entry.file ||
+    '';
+
+  const value = qHardSafeText(raw);
+
+  if (!value) return '';
+
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const base = typeof QUARTZ_PUBLIC_SITE_BASE_URL !== 'undefined'
+    ? QUARTZ_PUBLIC_SITE_BASE_URL
+    : 'https://quartz-launcher.pages.dev';
+
+  if (value.startsWith('/')) return `${base}${value}`;
+
+  return `${base}/assets/packages/${value}`;
+}
+
+function qHardNormalizePublicIndexMod(entry, sourceName = 'public-index') {
+  const id = qHardSafeText(entry.id || entry.modId || entry.packageId || entry.slug);
+  const name = qHardSafeText(entry.name || entry.title || id);
+
+  if (!id || !name) return null;
+
+  const tags = Array.isArray(entry.tags)
+    ? entry.tags.map(tag => qHardSafeText(tag)).filter(Boolean)
+    : [];
+
+  const engine =
+    qHardSafeText(entry.engine) ||
+    qHardSafeText(entry.type) ||
+    qHardSafeText(entry.packageType) ||
+    'geode-compat';
+
+  return {
+    ...entry,
+    id,
+    name,
+    developer: qHardSafeText(entry.developer || entry.author || entry.creator || 'Unknown'),
+    version: qHardSafeText(entry.version || '0.0.0'),
+    description: qHardSafeText(entry.description || entry.summary || ''),
+    category: qHardSafeText(entry.category || 'Utility'),
+    tags,
+    engine,
+    type: engine,
+    source: sourceName,
+    indexSource: sourceName,
+    packageFile: qHardSafeText(entry.packageFile || entry.file || ''),
+    packageUrl: qHardPackageUrl(entry),
+    installed: false,
+    enabled: false,
+    featured: !!entry.featured,
+    featuredRank: Number.isFinite(Number(entry.featuredRank)) ? Number(entry.featuredRank) : 999999,
+    featuredAt: entry.featuredAt || '',
+    detailsText: entry.detailsText || entry.readme || entry.about || entry.description || '',
+    changelogText: entry.changelogText || entry.changelog || ''
+  };
+}
+
+function qHardUniqueMods(mods) {
+  const byId = new Map();
+
+  for (const mod of mods) {
+    if (!mod || !mod.id) continue;
+
+    if (!byId.has(mod.id)) {
+      byId.set(mod.id, mod);
+      continue;
+    }
+
+    const existing = byId.get(mod.id);
+
+    // Prefer featured/live entries when duplicated.
+    if ((!existing.featured && mod.featured) || existing.source !== 'live-public-index') {
+      byId.set(mod.id, {
+        ...existing,
+        ...mod
+      });
+    }
+  }
+
+  return [...byId.values()];
+}
+
+async function qHardLoadPublicIndexMods() {
+  const loaded = [];
+  const errors = [];
+
+  const liveUrl = typeof QUARTZ_PUBLIC_INDEX_URL !== 'undefined'
+    ? QUARTZ_PUBLIC_INDEX_URL
+    : 'https://quartz-launcher.pages.dev/assets/index/quartz-index.json';
+
+  // 1) Live website index first.
+  try {
+    let text = '';
+
+    if (typeof qFetchText === 'function') {
+      text = await qFetchText(liveUrl, 10000);
+    } else if (typeof quartzFetchBuffer === 'function') {
+      text = (await quartzFetchBuffer(liveUrl)).toString('utf8');
+    }
+
+    if (text) {
+      const raw = JSON.parse(text);
+      loaded.push(...qHardExtractPublicIndexMods(raw).map(entry => qHardNormalizePublicIndexMod(entry, 'live-public-index')).filter(Boolean));
+    }
+  } catch (error) {
+    errors.push(`Live index failed: ${error.message}`);
+  }
+
+  // 2) Local website copy.
+  for (const item of [
+    { file: path.join(__dirname, 'site', 'assets', 'index', 'quartz-index.json'), source: 'site-local-index' },
+    { file: path.join(__dirname, 'assets', 'index', 'quartz-index.json'), source: 'app-local-index' },
+    { file: path.join(__dirname, 'assets', 'index', 'geode-quartz-index.json'), source: 'geode-local-index' }
+  ]) {
+    try {
+      if (!fs.existsSync(item.file)) continue;
+
+      const raw = JSON.parse(fs.readFileSync(item.file, 'utf8'));
+      loaded.push(...qHardExtractPublicIndexMods(raw).map(entry => qHardNormalizePublicIndexMod(entry, item.source)).filter(Boolean));
+    } catch (error) {
+      errors.push(`${item.source} failed: ${error.message}`);
+    }
+  }
+
+  const mods = qHardUniqueMods(loaded).sort((a, b) => {
+    const af = a.featured ? 1 : 0;
+    const bf = b.featured ? 1 : 0;
+
+    if (af !== bf) return bf - af;
+
+    const ar = Number.isFinite(Number(a.featuredRank)) ? Number(a.featuredRank) : 999999;
+    const br = Number.isFinite(Number(b.featuredRank)) ? Number(b.featuredRank) : 999999;
+
+    return (ar - br) || String(a.name).localeCompare(String(b.name));
+  });
+
+  return {
+    mods,
+    errors
+  };
+}
+
+try {
+  ipcMain.removeHandler('get-quartz-index');
+} catch {}
+
+ipcMain.handle('get-quartz-index', async (_event, options = {}) => {
+  try {
+    const result = await qHardLoadPublicIndexMods();
+    const mods = result.mods;
+
+    return {
+      ok: true,
+      index: {
+        mods,
+        errors: result.errors,
+        meta: {
+          page: 1,
+          pageSize: mods.length,
+          total: mods.length,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: mods.length,
+          installedCount: 0,
+          availableCount: mods.length,
+          allInstalled: false,
+          source: 'hard-public-index-loader',
+          backendMode: 'hard-public-index-loader',
+          liveIndexUrl: typeof QUARTZ_PUBLIC_INDEX_URL !== 'undefined'
+            ? QUARTZ_PUBLIC_INDEX_URL
+            : 'https://quartz-launcher.pages.dev/assets/index/quartz-index.json',
+          fallbackError: result.errors.length ? result.errors.join(' | ') : null
+        }
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      index: {
+        mods: [],
+        errors: [error.message],
+        meta: {
+          page: 1,
+          pageSize: Number(options.pageSize || 5000),
+          total: 0,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: 0,
+          installedCount: 0,
+          availableCount: 0,
+          allInstalled: false,
+          source: 'hard-public-index-loader-error',
+          backendMode: 'hard-public-index-loader'
+        }
+      }
+    };
+  }
+});
+// ===== Quartz Hard Public Index Loader END =====
+
+
+// ===== Quartz Local First Public Index Loader START =====
+// Final final override: local public index first, no live network wait.
+// This prevents the Index page from getting stuck at "waiting for load".
+function qLocalFirstExtractIndexMods(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.mods)) return raw.mods;
+  if (Array.isArray(raw?.packages)) return raw.packages;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw?.items)) return raw.items;
+  return [];
+}
+
+function qLocalFirstClean(value) {
+  return String(value || '').trim();
+}
+
+function qLocalFirstPackageUrl(entry) {
+  const raw =
+    entry.packageUrl ||
+    entry.downloadUrl ||
+    entry.downloadURL ||
+    entry.url ||
+    entry.packageFile ||
+    entry.file ||
+    '';
+
+  const value = qLocalFirstClean(raw);
+
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const base = typeof QUARTZ_PUBLIC_SITE_BASE_URL !== 'undefined'
+    ? QUARTZ_PUBLIC_SITE_BASE_URL
+    : 'https://quartz-launcher.pages.dev';
+
+  if (value.startsWith('/')) return `${base}${value}`;
+
+  return `${base}/assets/packages/${value}`;
+}
+
+function qLocalFirstNormalizeMod(entry, sourceName) {
+  const id = qLocalFirstClean(entry.id || entry.modId || entry.packageId || entry.slug);
+  const name = qLocalFirstClean(entry.name || entry.title || id);
+
+  if (!id || !name) return null;
+
+  const tags = Array.isArray(entry.tags)
+    ? entry.tags.map(tag => qLocalFirstClean(tag)).filter(Boolean)
+    : [];
+
+  const engine =
+    qLocalFirstClean(entry.engine) ||
+    qLocalFirstClean(entry.type) ||
+    qLocalFirstClean(entry.packageType) ||
+    'geode-compat';
+
+  return {
+    ...entry,
+    id,
+    name,
+    developer: qLocalFirstClean(entry.developer || entry.author || entry.creator || 'Unknown'),
+    version: qLocalFirstClean(entry.version || '0.0.0'),
+    description: qLocalFirstClean(entry.description || entry.summary || ''),
+    category: qLocalFirstClean(entry.category || 'Utility'),
+    tags,
+    engine,
+    type: engine,
+    source: sourceName,
+    indexSource: sourceName,
+    packageFile: qLocalFirstClean(entry.packageFile || entry.file || ''),
+    packageUrl: qLocalFirstPackageUrl(entry),
+    installed: false,
+    enabled: false,
+    featured: !!entry.featured,
+    featuredRank: Number.isFinite(Number(entry.featuredRank)) ? Number(entry.featuredRank) : 999999,
+    featuredAt: entry.featuredAt || '',
+    detailsText: entry.detailsText || entry.readme || entry.about || entry.description || '',
+    changelogText: entry.changelogText || entry.changelog || ''
+  };
+}
+
+function qLocalFirstUniqueMods(mods) {
+  const byId = new Map();
+
+  for (const mod of mods) {
+    if (!mod || !mod.id) continue;
+
+    if (!byId.has(mod.id)) {
+      byId.set(mod.id, mod);
+      continue;
+    }
+
+    const existing = byId.get(mod.id);
+
+    byId.set(mod.id, {
+      ...existing,
+      ...mod,
+      featured: existing.featured || mod.featured,
+      tags: Array.isArray(mod.tags) && mod.tags.length ? mod.tags : existing.tags
+    });
+  }
+
+  return [...byId.values()];
+}
+
+function qLocalFirstLoadPublicIndexMods() {
+  const loaded = [];
+  const errors = [];
+
+  const candidates = [
+    { file: path.join(__dirname, 'site', 'assets', 'index', 'quartz-index.json'), source: 'site-local-index' },
+    { file: path.join(__dirname, 'assets', 'index', 'quartz-index.json'), source: 'app-local-index' },
+    { file: path.join(__dirname, 'assets', 'index', 'geode-quartz-index.json'), source: 'geode-local-index' }
+  ];
+
+  for (const item of candidates) {
+    try {
+      if (!fs.existsSync(item.file)) {
+        errors.push(`${item.source} missing`);
+        continue;
+      }
+
+      const raw = JSON.parse(fs.readFileSync(item.file, 'utf8'));
+      const mods = qLocalFirstExtractIndexMods(raw)
+        .map(entry => qLocalFirstNormalizeMod(entry, item.source))
+        .filter(Boolean);
+
+      loaded.push(...mods);
+      console.log(`[Quartz Local Index] ${item.source}: ${mods.length} mods`);
+    } catch (error) {
+      errors.push(`${item.source} failed: ${error.message}`);
+    }
+  }
+
+  const mods = qLocalFirstUniqueMods(loaded).sort((a, b) => {
+    const af = a.featured ? 1 : 0;
+    const bf = b.featured ? 1 : 0;
+
+    if (af !== bf) return bf - af;
+
+    const ar = Number.isFinite(Number(a.featuredRank)) ? Number(a.featuredRank) : 999999;
+    const br = Number.isFinite(Number(b.featuredRank)) ? Number(b.featuredRank) : 999999;
+
+    return (ar - br) || String(a.name).localeCompare(String(b.name));
+  });
+
+  return {
+    mods,
+    errors
+  };
+}
+
+try {
+  ipcMain.removeHandler('get-quartz-index');
+} catch {}
+
+ipcMain.handle('get-quartz-index', async (_event, options = {}) => {
+  try {
+    const result = qLocalFirstLoadPublicIndexMods();
+    const mods = result.mods;
+
+    return {
+      ok: true,
+      index: {
+        mods,
+        errors: result.errors,
+        meta: {
+          page: 1,
+          pageSize: mods.length,
+          total: mods.length,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: mods.length,
+          installedCount: 0,
+          availableCount: mods.length,
+          allInstalled: false,
+          source: 'local-first-public-index',
+          backendMode: 'local-first-public-index',
+          liveIndexUrl: typeof QUARTZ_PUBLIC_INDEX_URL !== 'undefined'
+            ? QUARTZ_PUBLIC_INDEX_URL
+            : 'https://quartz-launcher.pages.dev/assets/index/quartz-index.json',
+          fallbackError: result.errors.length ? result.errors.join(' | ') : null
+        }
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message,
+      index: {
+        mods: [],
+        errors: [error.message],
+        meta: {
+          page: 1,
+          pageSize: Number(options.pageSize || 5000),
+          total: 0,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: 0,
+          installedCount: 0,
+          availableCount: 0,
+          allInstalled: false,
+          source: 'local-first-public-index-error',
+          backendMode: 'local-first-public-index'
+        }
+      }
+    };
+  }
+});
+// ===== Quartz Local First Public Index Loader END =====
+
+
+// ===== Quartz Clean Public Index IPC START =====
+// Dedicated clean channel for the public Index page.
+// This avoids older stacked get-quartz-index handlers.
+function qCleanPublicIndexFallbackLoad() {
+  const loaded = [];
+  const errors = [];
+
+  function extract(raw) {
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.mods)) return raw.mods;
+    if (Array.isArray(raw?.packages)) return raw.packages;
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw?.items)) return raw.items;
+    return [];
+  }
+
+  function clean(value) {
+    return String(value || '').trim();
+  }
+
+  function packageUrl(entry) {
+    const raw =
+      entry.packageUrl ||
+      entry.downloadUrl ||
+      entry.downloadURL ||
+      entry.url ||
+      entry.packageFile ||
+      entry.file ||
+      '';
+
+    const value = clean(raw);
+
+    if (!value) return '';
+    if (/^https?:\/\//i.test(value)) return value;
+
+    const base = typeof QUARTZ_PUBLIC_SITE_BASE_URL !== 'undefined'
+      ? QUARTZ_PUBLIC_SITE_BASE_URL
+      : 'https://quartz-launcher.pages.dev';
+
+    if (value.startsWith('/')) return `${base}${value}`;
+
+    return `${base}/assets/packages/${value}`;
+  }
+
+  function normalize(entry, sourceName) {
+    const id = clean(entry.id || entry.modId || entry.packageId || entry.slug);
+    const name = clean(entry.name || entry.title || id);
+
+    if (!id || !name) return null;
+
+    const tags = Array.isArray(entry.tags)
+      ? entry.tags.map(tag => clean(tag)).filter(Boolean)
+      : [];
+
+    const engine =
+      clean(entry.engine) ||
+      clean(entry.type) ||
+      clean(entry.packageType) ||
+      'geode-compat';
+
+    return {
+      ...entry,
+      id,
+      name,
+      developer: clean(entry.developer || entry.author || entry.creator || 'Unknown'),
+      version: clean(entry.version || '0.0.0'),
+      description: clean(entry.description || entry.summary || ''),
+      category: clean(entry.category || 'Utility'),
+      tags,
+      engine,
+      type: engine,
+      source: sourceName,
+      indexSource: sourceName,
+      packageFile: clean(entry.packageFile || entry.file || ''),
+      packageUrl: packageUrl(entry),
+      installed: false,
+      enabled: false,
+      featured: !!entry.featured,
+      featuredRank: Number.isFinite(Number(entry.featuredRank)) ? Number(entry.featuredRank) : 999999,
+      featuredAt: entry.featuredAt || '',
+      detailsText: entry.detailsText || entry.readme || entry.about || entry.description || '',
+      changelogText: entry.changelogText || entry.changelog || ''
+    };
+  }
+
+  const candidates = [
+    { file: path.join(__dirname, 'site', 'assets', 'index', 'quartz-index.json'), source: 'site-local-index' },
+    { file: path.join(__dirname, 'assets', 'index', 'quartz-index.json'), source: 'app-local-index' },
+    { file: path.join(__dirname, 'assets', 'index', 'geode-quartz-index.json'), source: 'geode-local-index' }
+  ];
+
+  for (const item of candidates) {
+    try {
+      if (!fs.existsSync(item.file)) {
+        errors.push(`${item.source} missing`);
+        continue;
+      }
+
+      const raw = JSON.parse(fs.readFileSync(item.file, 'utf8'));
+      const mods = extract(raw).map(entry => normalize(entry, item.source)).filter(Boolean);
+
+      console.log(`[Quartz Clean Public Index] ${item.source}: ${mods.length} mods`);
+      loaded.push(...mods);
+    } catch (error) {
+      errors.push(`${item.source} failed: ${error.message}`);
+    }
+  }
+
+  const byId = new Map();
+
+  for (const mod of loaded) {
+    if (!mod || !mod.id) continue;
+
+    if (!byId.has(mod.id)) {
+      byId.set(mod.id, mod);
+      continue;
+    }
+
+    const existing = byId.get(mod.id);
+
+    byId.set(mod.id, {
+      ...existing,
+      ...mod,
+      featured: existing.featured || mod.featured,
+      tags: Array.isArray(mod.tags) && mod.tags.length ? mod.tags : existing.tags
+    });
+  }
+
+  const mods = [...byId.values()].sort((a, b) => {
+    const af = a.featured ? 1 : 0;
+    const bf = b.featured ? 1 : 0;
+
+    if (af !== bf) return bf - af;
+
+    const ar = Number.isFinite(Number(a.featuredRank)) ? Number(a.featuredRank) : 999999;
+    const br = Number.isFinite(Number(b.featuredRank)) ? Number(b.featuredRank) : 999999;
+
+    return (ar - br) || String(a.name).localeCompare(String(b.name));
+  });
+
+  return { mods, errors };
+}
+
+try {
+  ipcMain.removeHandler('get-public-index-local');
+} catch {}
+
+ipcMain.handle('get-public-index-local', async () => {
+  try {
+    const result = typeof qLocalFirstLoadPublicIndexMods === 'function'
+      ? qLocalFirstLoadPublicIndexMods()
+      : qCleanPublicIndexFallbackLoad();
+
+    const mods = Array.isArray(result.mods) ? result.mods : [];
+
+    console.log(`[Quartz Clean Public Index IPC] returning ${mods.length} mods`);
+
+    return {
+      ok: true,
+      index: {
+        mods,
+        errors: result.errors || [],
+        meta: {
+          page: 1,
+          pageSize: mods.length,
+          total: mods.length,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: mods.length,
+          installedCount: 0,
+          availableCount: mods.length,
+          allInstalled: false,
+          source: 'clean-public-index-local',
+          backendMode: 'clean-public-index-local',
+          fallbackError: result.errors && result.errors.length ? result.errors.join(' | ') : null
+        }
+      }
+    };
+  } catch (error) {
+    console.error('[Quartz Clean Public Index IPC] failed:', error);
+
+    return {
+      ok: false,
+      error: error.message,
+      index: {
+        mods: [],
+        errors: [error.message],
+        meta: {
+          page: 1,
+          pageSize: 0,
+          total: 0,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+          allCount: 0,
+          installedCount: 0,
+          availableCount: 0,
+          allInstalled: false,
+          source: 'clean-public-index-local-error',
+          backendMode: 'clean-public-index-local'
+        }
+      }
+    };
+  }
+});
+// ===== Quartz Clean Public Index IPC END =====
+
