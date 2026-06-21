@@ -9,6 +9,10 @@ const state = {
   indexPage: 1,
   selectedIndexModIds: new Set(),
   installedPage: 1,
+  installedSearch: '',
+  installedSort: 'name',
+  selectedInstalledModIds: new Set(),
+  installedBulkInProgress: false,
   pageSize: 12,
   devProjects: [],
   selectedDevProject: '',
@@ -931,6 +935,57 @@ function addStyles() {
       line-height: 1.35;
     }
 
+
+    .quartz-installed-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .quartz-installed-select input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .quartz-installed-sort {
+      min-height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: rgba(245,247,255,0.95);
+      padding: 9px 12px;
+      outline: none;
+    }
+
+    .quartz-installed-sort option {
+      color: #111827;
+    }
+
+    .quartz-bulk-progress {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(102,217,255,0.22);
+      background: rgba(102,217,255,0.10);
+      color: rgba(245,247,255,0.92);
+      font-size: 12px;
+    }
+
+    .quartz-bulk-progress[hidden] {
+      display: none;
+    }
+
   `;
 
   document.head.appendChild(style);
@@ -1514,6 +1569,22 @@ function createModCard(mod, mode) {
     </div>
   `;
 
+  if (mode === 'installed') {
+    const installedSelected = state.selectedInstalledModIds.has(String(id));
+    card.classList.toggle('quartz-selected-card', installedSelected);
+    card.insertAdjacentHTML('afterbegin', `
+      <label class="quartz-installed-select" title="Select this installed mod for bulk actions">
+        <input class="quartz-installed-select-input" type="checkbox" ${installedSelected ? 'checked' : ''} />
+        <span>Select</span>
+      </label>
+    `);
+  }
+
+  card.querySelector('.quartz-installed-select-input')?.addEventListener('change', event => {
+    setInstalledModSelected(id, event.currentTarget.checked);
+    card.classList.toggle('quartz-selected-card', event.currentTarget.checked);
+  });
+
   card.querySelector('.quartz-details-btn')?.addEventListener('click', event => {
     event.preventDefault();
     openQuartzModDetails(mod, mode);
@@ -1905,6 +1976,268 @@ function ensureInstalledPager(root) {
   return pager;
 }
 
+
+// ===== Quartz Installed Bulk UI START =====
+function getInstalledFilterHaystack(mod) {
+  return [
+    getModId(mod),
+    getModName(mod),
+    mod.description,
+    mod.developer,
+    mod.author,
+    mod.category,
+    mod.engine,
+    mod.type,
+    mod.source,
+    modIsEnabled(mod) ? 'enabled' : 'disabled',
+    ...(Array.isArray(mod.tags) ? mod.tags : [])
+  ].join(' ').toLowerCase();
+}
+
+function sortInstalledMods(mods) {
+  const sort = state.installedSort || 'name';
+  const byName = (a, b) => getModName(a).localeCompare(getModName(b));
+
+  return [...mods].sort((a, b) => {
+    if (sort === 'enabled') {
+      const ae = modIsEnabled(a) ? 1 : 0;
+      const be = modIsEnabled(b) ? 1 : 0;
+      return (be - ae) || byName(a, b);
+    }
+
+    if (sort === 'disabled') {
+      const ae = modIsEnabled(a) ? 1 : 0;
+      const be = modIsEnabled(b) ? 1 : 0;
+      return (ae - be) || byName(a, b);
+    }
+
+    if (sort === 'developer') {
+      return String(a.developer || a.author || '').localeCompare(String(b.developer || b.author || '')) || byName(a, b);
+    }
+
+    if (sort === 'engine') {
+      return String(a.engine || a.type || '').localeCompare(String(b.engine || b.type || '')) || byName(a, b);
+    }
+
+    return byName(a, b);
+  });
+}
+
+function getInstalledFilteredMods() {
+  const query = String(state.installedSearch || '').trim().toLowerCase();
+
+  const filtered = query
+    ? state.installedMods.filter(mod => getInstalledFilterHaystack(mod).includes(query))
+    : [...state.installedMods];
+
+  return sortInstalledMods(filtered);
+}
+
+function getInstalledPageData() {
+  const mods = getInstalledFilteredMods();
+  const pageSize = Math.max(1, Number(state.pageSize || 12));
+  const total = mods.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(Math.max(1, Number(state.installedPage || 1)), totalPages);
+  const start = (page - 1) * pageSize;
+
+  return {
+    mods: mods.slice(start, start + pageSize),
+    page,
+    total,
+    totalPages
+  };
+}
+
+function pruneSelectedInstalledMods() {
+  const installedIds = new Set(state.installedMods.map(getModId).filter(Boolean));
+  state.selectedInstalledModIds = new Set(
+    [...state.selectedInstalledModIds].filter(id => installedIds.has(id))
+  );
+}
+
+function getSelectedInstalledModIds() {
+  pruneSelectedInstalledMods();
+  return [...state.selectedInstalledModIds];
+}
+
+function updateInstalledBulkUi() {
+  const ids = getSelectedInstalledModIds();
+  const busy = !!state.installedBulkInProgress;
+  const count = $('#quartz-installed-selected-count');
+  const noneSelected = ids.length === 0;
+
+  if (count) {
+    count.textContent = `${ids.length} selected`;
+  }
+
+  $('#quartz-installed-select-shown-btn')?.toggleAttribute('disabled', busy);
+  $('#quartz-installed-select-results-btn')?.toggleAttribute('disabled', busy);
+  $('#quartz-installed-clear-selected-btn')?.toggleAttribute('disabled', noneSelected || busy);
+  $('#quartz-installed-enable-selected-btn')?.toggleAttribute('disabled', noneSelected || busy);
+  $('#quartz-installed-disable-selected-btn')?.toggleAttribute('disabled', noneSelected || busy);
+  $('#quartz-installed-uninstall-selected-btn')?.toggleAttribute('disabled', noneSelected || busy);
+  $('#quartz-installed-export-btn')?.toggleAttribute('disabled', busy || state.installedMods.length === 0);
+}
+
+function setInstalledBulkProgress(text = '') {
+  const progress = $('#quartz-installed-bulk-progress');
+
+  if (!progress) return;
+
+  progress.textContent = text;
+  progress.hidden = !text;
+}
+
+function setInstalledModSelected(id, selected) {
+  if (!id) return;
+
+  if (selected) {
+    state.selectedInstalledModIds.add(String(id));
+  } else {
+    state.selectedInstalledModIds.delete(String(id));
+  }
+
+  updateInstalledBulkUi();
+}
+
+function selectShownInstalledMods() {
+  getInstalledPageData().mods.forEach(mod => {
+    const id = getModId(mod);
+    if (id) state.selectedInstalledModIds.add(String(id));
+  });
+
+  renderInstalledMods();
+  setStatus(`Selected ${getSelectedInstalledModIds().length} installed mod(s).`);
+}
+
+function selectFilteredInstalledMods() {
+  getInstalledFilteredMods().forEach(mod => {
+    const id = getModId(mod);
+    if (id) state.selectedInstalledModIds.add(String(id));
+  });
+
+  renderInstalledMods();
+  setStatus(`Selected ${getSelectedInstalledModIds().length} installed mod(s) from current results.`);
+}
+
+function clearSelectedInstalledMods() {
+  state.selectedInstalledModIds.clear();
+  renderInstalledMods();
+  setStatus('Cleared selected installed mods.');
+}
+
+async function runInstalledBulkAction(action) {
+  const ids = getSelectedInstalledModIds();
+
+  if (!ids.length) {
+    setStatus('Select at least one installed mod first.');
+    return;
+  }
+
+  const actionLabel =
+    action === 'enable' ? 'enable' :
+    action === 'disable' ? 'disable' :
+    action === 'uninstall' ? 'uninstall' :
+    action;
+
+  const confirmed = confirm(
+    `Bulk ${actionLabel} ${ids.length} selected installed mod(s)?` +
+    (action === 'uninstall' ? '\n\nThis removes them from Quartz.' : '')
+  );
+
+  if (!confirmed) {
+    setStatus(`Bulk ${actionLabel} canceled.`);
+    return;
+  }
+
+  const fn =
+    action === 'enable' ? window.quartzAPI.enableQuartzMod :
+    action === 'disable' ? window.quartzAPI.disableQuartzMod :
+    action === 'uninstall' ? window.quartzAPI.uninstallQuartzPackage :
+    null;
+
+  if (typeof fn !== 'function') {
+    alert(`Bulk ${actionLabel} is not connected. Restart Quartz and try again.`);
+    return;
+  }
+
+  const failures = [];
+  let completed = 0;
+
+  state.installedBulkInProgress = true;
+  updateInstalledBulkUi();
+
+  try {
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index];
+      const mod = state.installedMods.find(item => getModId(item) === id);
+      const name = mod ? getModName(mod) : id;
+      const progressText = `${actionLabel[0].toUpperCase() + actionLabel.slice(1)} ${index + 1}/${ids.length}: ${name}`;
+
+      setStatus(progressText);
+      setInstalledBulkProgress(progressText);
+
+      try {
+        const result = await fn(id);
+
+        if (!isOk(result)) {
+          failures.push(`${name}: ${getError(result)}`);
+        } else {
+          completed += 1;
+
+          if (action === 'uninstall') {
+            state.selectedInstalledModIds.delete(id);
+          }
+        }
+      } catch (error) {
+        failures.push(`${name}: ${error.message || error}`);
+      }
+    }
+
+    setInstalledBulkProgress('Refreshing installed mods...');
+
+    if (typeof refreshAll === 'function') {
+      await refreshAll();
+    } else {
+      await loadInstalledMods(false);
+    }
+
+    if (failures.length) {
+      alert(`Bulk ${actionLabel} completed ${completed}/${ids.length} mod(s).\n\nFailed:\n${failures.join('\n')}`);
+      setStatus(`Bulk ${actionLabel}: ${completed}/${ids.length} completed, ${failures.length} failed.`);
+    } else {
+      alert(`Bulk ${actionLabel} completed for ${completed} mod(s).`);
+      setStatus(`Bulk ${actionLabel} completed for ${completed} mod(s).`);
+    }
+  } finally {
+    state.installedBulkInProgress = false;
+    setInstalledBulkProgress('');
+    updateInstalledBulkUi();
+  }
+}
+
+async function exportInstalledModList() {
+  if (!window.quartzAPI?.exportInstalledModList) {
+    alert('Export Installed Mods is not connected. Restart Quartz and try again.');
+    return;
+  }
+
+  setStatus('Exporting installed mod list...');
+
+  const result = await window.quartzAPI.exportInstalledModList(state.installedMods);
+
+  if (!isOk(result)) {
+    alert('Export failed:\n' + getError(result));
+    setStatus('Export installed mod list failed.');
+    return;
+  }
+
+  alert(`Exported ${result.total || state.installedMods.length} installed mod(s).\n\nMarkdown:\n${result.mdPath}\n\nJSON:\n${result.jsonPath}`);
+  setStatus(`Installed mod list exported to ${result.exportDir || result.mdPath || 'Desktop'}.`);
+}
+// ===== Quartz Installed Bulk UI END =====
+
 async function loadInstalledMods(resetPage = false) {
   const root = ensureInstalledRoot();
   if (!root || !window.quartzAPI?.getInstalledMods) return;
@@ -1932,21 +2265,78 @@ function renderInstalledMods() {
   const root = ensureInstalledRoot();
   if (!root) return;
 
-  const pageData = filterAndPage(state.installedMods, '', state.installedPage);
+  pruneSelectedInstalledMods();
+
+  const pageData = getInstalledPageData();
   state.installedPage = pageData.page;
 
   root.innerHTML = `
     <div class="quartz-toolbar">
+      <input id="quartz-installed-search" class="quartz-search" placeholder="Search installed mods..." />
+      <select id="quartz-installed-sort" class="quartz-installed-sort" title="Sort installed mods">
+        <option value="name">A-Z</option>
+        <option value="enabled">Enabled First</option>
+        <option value="disabled">Disabled First</option>
+        <option value="developer">Developer</option>
+        <option value="engine">Engine</option>
+      </select>
+      <span id="quartz-installed-selected-count" class="quartz-selected-count">0 selected</span>
+      <span id="quartz-installed-bulk-progress" class="quartz-bulk-progress" hidden></span>
+      <button class="secondary-btn small" id="quartz-installed-select-shown-btn">Select Shown</button>
+      <button class="secondary-btn small" id="quartz-installed-select-results-btn">Select Results</button>
+      <button class="secondary-btn small" id="quartz-installed-clear-selected-btn" disabled>Clear Selected</button>
+      <button class="secondary-btn small" id="quartz-installed-enable-selected-btn" disabled>Enable Selected</button>
+      <button class="secondary-btn small" id="quartz-installed-disable-selected-btn" disabled>Disable Selected</button>
+      <button class="secondary-btn small quartz-danger" id="quartz-installed-uninstall-selected-btn" disabled>Uninstall Selected</button>
+      <button class="secondary-btn small" id="quartz-installed-export-btn">Export List</button>
       <button class="secondary-btn small" id="quartz-open-mods-folder-btn-2">Open Mods Folder</button>
       <button class="secondary-btn small" id="quartz-scan-mods-folder-btn-2">Scan Mods Folder</button>
     </div>
     <div id="quartz-installed-grid" class="quartz-grid"></div>
   `;
 
+  const searchInput = $('#quartz-installed-search');
+  const sortSelect = $('#quartz-installed-sort');
+
+  if (searchInput) {
+    searchInput.value = state.installedSearch || '';
+    searchInput.addEventListener('input', event => {
+      state.installedSearch = event.target.value || '';
+      state.installedPage = 1;
+      renderInstalledMods();
+
+      setTimeout(() => {
+        const nextInput = $('#quartz-installed-search');
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+        }
+      }, 0);
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.value = state.installedSort || 'name';
+    sortSelect.addEventListener('change', event => {
+      state.installedSort = event.target.value || 'name';
+      state.installedPage = 1;
+      renderInstalledMods();
+    });
+  }
+
+  $('#quartz-installed-select-shown-btn')?.addEventListener('click', selectShownInstalledMods);
+  $('#quartz-installed-select-results-btn')?.addEventListener('click', selectFilteredInstalledMods);
+  $('#quartz-installed-clear-selected-btn')?.addEventListener('click', clearSelectedInstalledMods);
+  $('#quartz-installed-enable-selected-btn')?.addEventListener('click', () => runInstalledBulkAction('enable'));
+  $('#quartz-installed-disable-selected-btn')?.addEventListener('click', () => runInstalledBulkAction('disable'));
+  $('#quartz-installed-uninstall-selected-btn')?.addEventListener('click', () => runInstalledBulkAction('uninstall'));
+  $('#quartz-installed-export-btn')?.addEventListener('click', exportInstalledModList);
   $('#quartz-open-mods-folder-btn-2')?.addEventListener('click', openQuartzModsFolder);
   $('#quartz-scan-mods-folder-btn-2')?.addEventListener('click', autoScanQuartzModsFolder);
 
   const grid = $('#quartz-installed-grid');
+
+  if (!grid) return;
 
   if (state.installedMods.length === 0) {
     grid.innerHTML = `
@@ -1955,14 +2345,25 @@ function renderInstalledMods() {
         <p>Install a Quartz package from the Index or drop .quartz/.geode files into the Quartz Mods folder.</p>
       </div>
     `;
+  } else if (pageData.mods.length === 0) {
+    grid.innerHTML = `
+      <div class="quartz-empty">
+        <h3>No installed mods found</h3>
+        <p>Try a different search or clear the search box.</p>
+      </div>
+    `;
   } else {
     pageData.mods.forEach(mod => grid.appendChild(createModCard(mod, 'installed')));
   }
 
   const pager = ensureInstalledPager(root);
-  $('#quartz-installed-page-label').textContent = `Page ${pageData.page} / ${pageData.totalPages} — ${pageData.total} mod(s)`;
-  $('#quartz-installed-prev').disabled = pageData.page <= 1;
-  $('#quartz-installed-next').disabled = pageData.page >= pageData.totalPages;
+  if (pager) {
+    $('#quartz-installed-page-label').textContent = `Page ${pageData.page} / ${pageData.totalPages} — ${pageData.total} shown / ${state.installedMods.length} installed`;
+    $('#quartz-installed-prev').disabled = pageData.page <= 1;
+    $('#quartz-installed-next').disabled = pageData.page >= pageData.totalPages;
+  }
+
+  updateInstalledBulkUi();
 }
 
 async function openQuartzModsFolder() {

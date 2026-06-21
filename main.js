@@ -5401,3 +5401,93 @@ ipcMain.handle('get-public-index-local', async () => {
 });
 // ===== Quartz Clean Public Index IPC END =====
 
+
+// ===== Quartz Export Installed Mod List START =====
+try {
+  ipcMain.removeHandler('export-installed-mod-list');
+} catch {}
+
+ipcMain.handle('export-installed-mod-list', async (_event, rendererMods = []) => {
+  try {
+    let mods = Array.isArray(rendererMods) ? rendererMods : [];
+
+    if (!mods.length && typeof qInstalledModsWithEnabledState === 'function') {
+      mods = qInstalledModsWithEnabledState();
+    }
+
+    if (!mods.length && typeof qListInstalledQuartzPackages === 'function') {
+      mods = qListInstalledQuartzPackages();
+    }
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const exportDir = path.join(app.getPath('desktop') || os.homedir(), 'QuartzLauncherExports');
+
+    fs.mkdirSync(exportDir, { recursive: true });
+
+    const mdPath = path.join(exportDir, `quartz-installed-mods-${stamp}.md`);
+    const jsonPath = path.join(exportDir, `quartz-installed-mods-${stamp}.json`);
+
+    const cleanMods = mods.map(mod => ({
+      id: mod.id || mod.packageId || mod.modId || mod.slug || 'unknown',
+      name: mod.name || mod.title || mod.id || 'Unknown',
+      developer: mod.developer || mod.author || 'Unknown',
+      version: mod.version || 'unknown',
+      engine: mod.engine || mod.type || 'unknown',
+      enabled: typeof mod.enabled === 'boolean' ? mod.enabled : true,
+      category: mod.category || '',
+      tags: Array.isArray(mod.tags) ? mod.tags : []
+    }));
+
+    const enabledCount = cleanMods.filter(mod => mod.enabled).length;
+    const disabledCount = cleanMods.length - enabledCount;
+
+    const markdown = [
+      '# Quartz Installed Mods',
+      '',
+      `Exported: ${new Date().toLocaleString()}`,
+      `Total: ${cleanMods.length}`,
+      `Enabled: ${enabledCount}`,
+      `Disabled: ${disabledCount}`,
+      '',
+      '| Name | ID | Version | Engine | Enabled | Developer |',
+      '| --- | --- | --- | --- | --- | --- |',
+      ...cleanMods.map(mod => {
+        const cells = [
+          mod.name,
+          mod.id,
+          mod.version,
+          mod.engine,
+          mod.enabled ? 'Yes' : 'No',
+          mod.developer
+        ].map(value => String(value || '').replace(/\|/g, '\\|'));
+
+        return `| ${cells.join(' | ')} |`;
+      }),
+      ''
+    ].join('\n');
+
+    fs.writeFileSync(mdPath, markdown, 'utf8');
+    fs.writeFileSync(jsonPath, JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      total: cleanMods.length,
+      enabledCount,
+      disabledCount,
+      mods: cleanMods
+    }, null, 2) + '\n', 'utf8');
+
+    return {
+      ok: true,
+      mdPath,
+      jsonPath,
+      exportDir,
+      total: cleanMods.length
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message
+    };
+  }
+});
+// ===== Quartz Export Installed Mod List END =====
+

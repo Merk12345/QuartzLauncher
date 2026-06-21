@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('quartzAPI', {
 
   getQuartzIndex: (options = {}) => ipcRenderer.invoke('get-quartz-index', options),
   getInstalledMods: () => ipcRenderer.invoke('get-installed-mods'),
+  exportInstalledModList: (mods = []) => ipcRenderer.invoke('export-installed-mod-list', mods),
   getModStatus: () => ipcRenderer.invoke('get-mod-status'),
   getQuartzRuntimeStatus: () => ipcRenderer.invoke('get-quartz-runtime-status'),
   syncQuartzRuntime: () => ipcRenderer.invoke('sync-quartz-runtime'),
