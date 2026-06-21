@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('quartzAPI', {
   uninstallISL: () => ipcRenderer.invoke('uninstall-isl'),
 
   runQuartzPrelaunchSafetyCheck: (options = {}) => ipcRenderer.invoke('run-quartz-prelaunch-safety-check', options),
+  fixQuartzSetup: (options = {}) => ipcRenderer.invoke('fix-quartz-setup', options),
   createQuartzBackup: () => ipcRenderer.invoke('create-quartz-backup'),
   restoreQuartzBackup: () => ipcRenderer.invoke('restore-quartz-backup'),
   openQuartzBackupsFolder: () => ipcRenderer.invoke('open-quartz-backups-folder'),

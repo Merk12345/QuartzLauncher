@@ -3545,7 +3545,10 @@ function getQuartzSafetySettingsHost() {
 }
 
 function ensureQuartzSafetyCard() {
-  if ($('#quartz-safety-card')) return $('#quartz-safety-card');
+  if ($('#quartz-safety-card')) {
+    setQuartzFixMySetupVisible(false);
+    return $('#quartz-safety-card');
+  }
 
   const host = getQuartzSafetySettingsHost();
   if (!host) return null;
@@ -3563,6 +3566,7 @@ function ensureQuartzSafetyCard() {
 
     <div class="quartz-actions quartz-safety-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
       <button class="primary-btn small" id="quartz-run-safety-check-btn">Run Safety Check</button>
+      <button class="secondary-btn small" id="quartz-fix-my-setup-btn" style="display:none;">Fix My Setup</button>
     </div>
 
     <div id="quartz-safety-status" class="status-text small muted">Safety check has not been run yet.</div>
@@ -3580,12 +3584,21 @@ function ensureQuartzSafetyCard() {
     host.appendChild(card);
   }
 
+  setQuartzFixMySetupVisible(false);
   return card;
 }
 
 function setQuartzSafetyStatus(text = '') {
   const el = $('#quartz-safety-status');
   if (el) el.textContent = text;
+}
+
+function setQuartzFixMySetupVisible(visible = false) {
+  const btn = $('#quartz-fix-my-setup-btn');
+  if (!btn) return;
+
+  btn.style.display = visible ? '' : 'none';
+  btn.toggleAttribute('hidden', !visible);
 }
 
 function quartzSafetyResultColor(risk = '') {
@@ -3609,6 +3622,7 @@ function renderQuartzSafetyResults(result = {}) {
   if (!root) return;
 
   const risk = result.risk || (result.ok ? 'pass' : 'fail');
+  setQuartzFixMySetupVisible(risk === 'fail');
   const title = risk === 'pass'
     ? 'Passed'
     : risk === 'warn'
@@ -3674,6 +3688,7 @@ async function runQuartzSafetyCheck() {
   }
 
   try {
+    setQuartzFixMySetupVisible(false);
     setQuartzSafetyStatus('Running safety check and syncing runtime...');
     const result = await window.quartzAPI.runQuartzPrelaunchSafetyCheck({ syncRuntime: true });
 
@@ -3694,14 +3709,72 @@ async function runQuartzSafetyCheck() {
   }
 }
 
+async function fixMyQuartzSetup() {
+  ensureQuartzSafetyCard();
+
+  if (!window.quartzAPI?.fixQuartzSetup) {
+    alert('Fix My Setup is not connected. Restart Quartz Launcher and try again.');
+    setQuartzSafetyStatus('Fix My Setup is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  const ok = confirm(
+    'Run Fix My Setup?\n\nQuartz will create a backup first, repair enabled/disabled package copies, rebuild the runtime manifest, and run Safety Check again. It will not delete unrelated current mods.'
+  );
+  if (!ok) return;
+
+  try {
+    setQuartzFixMySetupVisible(false);
+    setQuartzSafetyStatus('Creating backup and repairing setup...');
+    setStatus('Fix My Setup is running...');
+
+    const result = await window.quartzAPI.fixQuartzSetup({ createBackup: true });
+
+    if (result?.after) {
+      renderQuartzSafetyResults(result.after);
+    }
+
+    const after = result?.after || {};
+    const backupDir = result?.backup?.backupDir || '';
+
+    const msg = result?.ok
+      ? `Fix My Setup finished: repaired ${result.repairedCount ?? 0} item(s). Safety check ${after.risk || 'complete'}.`
+      : `Fix My Setup finished with ${result?.failedCount ?? 0} issue(s).`;
+
+    setQuartzSafetyStatus(backupDir ? `${msg} Backup: ${backupDir}` : msg);
+    setStatus(msg);
+
+    if (!result?.ok) {
+      const failed = Array.isArray(result?.failed) && result.failed.length
+        ? '\n\nFailed:\n' + result.failed.map(item => `${item.step || 'step'}${item.id ? ` ${item.id}` : ''}: ${item.error}`).join('\n')
+        : '';
+      alert(`${msg}${failed}`);
+    }
+
+    await refreshAll();
+    if (typeof loadQuartzProfiles === 'function') await loadQuartzProfiles(true);
+  } catch (error) {
+    alert(`Fix My Setup crashed:\n${error.message || error}`);
+    setQuartzSafetyStatus(`Fix My Setup crashed: ${error.message || error}`);
+  }
+}
+
 function handleQuartzSafetyDelegatedClick(event) {
-  const target = event.target?.closest?.('#quartz-run-safety-check-btn');
+  const target = event.target?.closest?.('#quartz-run-safety-check-btn, #quartz-fix-my-setup-btn');
   if (!target) return;
 
   event.preventDefault();
   event.stopPropagation();
 
-  runQuartzSafetyCheck();
+  if (target.id === 'quartz-run-safety-check-btn') {
+    runQuartzSafetyCheck();
+    return;
+  }
+
+  if (target.id === 'quartz-fix-my-setup-btn') {
+    if (target.hidden || target.style.display === 'none') return;
+    fixMyQuartzSetup();
+  }
 }
 
 function installQuartzSafetyDelegatedClickHandler() {

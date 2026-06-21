@@ -5695,6 +5695,197 @@ ipcMain.handle('run-quartz-prelaunch-safety-check', async (_event, options = {})
 // ===== Quartz Pre-launch Safety Check END =====
 
 
+// ===== Quartz Fix My Setup START =====
+// Repairs the local Quartz setup without deleting unrelated current mods.
+// It creates a backup first, repairs enabled/disabled package copies, rebuilds runtime,
+// then runs the safety check again.
+function qFixSetupModId(mod) {
+  return String(mod?.id || mod?.packageId || mod?.modId || mod?.slug || '').trim();
+}
+
+function qFixSetupShouldBeEnabled(id, mod = null) {
+  try {
+    if (typeof qIsQuartzModDisabled === 'function') {
+      return !qIsQuartzModDisabled(id);
+    }
+  } catch (_) {}
+
+  if (mod?.disabled === true) return false;
+  if (mod?.enabled === false) return false;
+  if (mod?.isDisabled === true) return false;
+  return true;
+}
+
+function qRunQuartzFixMySetup(options = {}) {
+  const startedAt = new Date().toISOString();
+  const repaired = [];
+  const skipped = [];
+  const failed = [];
+  const notes = [];
+  let backup = null;
+  let before = null;
+  let after = null;
+  let runtime = null;
+
+  try {
+    if (typeof qRunQuartzPrelaunchSafetyCheck === 'function') {
+      before = qRunQuartzPrelaunchSafetyCheck({ syncRuntime: false });
+    }
+  } catch (error) {
+    notes.push({
+      area: 'before-check',
+      message: `Could not run before-check: ${error.message || error}`
+    });
+  }
+
+  if (options.createBackup !== false) {
+    try {
+      if (typeof qCreateQuartzBackup === 'function') {
+        backup = qCreateQuartzBackup();
+        notes.push({
+          area: 'backup',
+          message: `Created backup before repair: ${backup.backupDir || backup.backupName || 'backup created'}`
+        });
+      } else {
+        notes.push({
+          area: 'backup',
+          message: 'Backup function was not available, so no automatic backup was created.'
+        });
+      }
+    } catch (error) {
+      notes.push({
+        area: 'backup',
+        message: `Automatic backup failed, continuing repair anyway: ${error.message || error}`
+      });
+    }
+  }
+
+  try {
+    if (typeof qEnsureNativeFolders === 'function') qEnsureNativeFolders();
+    if (typeof qEnsureEnableFolders === 'function') qEnsureEnableFolders();
+    if (typeof qEnsureRuntimeFolders === 'function') qEnsureRuntimeFolders();
+  } catch (error) {
+    failed.push({
+      step: 'folders',
+      error: error.message || String(error)
+    });
+  }
+
+  const installed = typeof qInstalledModsWithEnabledState === 'function'
+    ? qInstalledModsWithEnabledState()
+    : [];
+
+  for (const mod of installed) {
+    const id = qFixSetupModId(mod);
+
+    if (!id) {
+      skipped.push({
+        step: 'installed',
+        message: 'Skipped installed mod with no package id.'
+      });
+      continue;
+    }
+
+    let packagePath = '';
+
+    try {
+      packagePath = qLibraryPackagePath(id);
+    } catch (_) {}
+
+    if (!packagePath || !fs.existsSync(packagePath)) {
+      failed.push({
+        step: 'package',
+        id,
+        error: 'Installed package file is missing.'
+      });
+      continue;
+    }
+
+    const shouldEnable = qFixSetupShouldBeEnabled(id, mod);
+
+    try {
+      if (shouldEnable) {
+        const result = qEnableQuartzMod(id);
+        repaired.push({
+          step: 'enable',
+          id,
+          message: `Enabled copy repaired for ${id}.`,
+          result
+        });
+      } else {
+        const result = qDisableQuartzMod(id);
+        repaired.push({
+          step: 'disable',
+          id,
+          message: `Disabled state repaired for ${id}.`,
+          result
+        });
+      }
+    } catch (error) {
+      failed.push({
+        step: shouldEnable ? 'enable' : 'disable',
+        id,
+        error: error.message || String(error)
+      });
+    }
+  }
+
+  try {
+    if (typeof qBuildRuntimeManifest === 'function') {
+      runtime = qBuildRuntimeManifest();
+      notes.push({
+        area: 'runtime',
+        message: `Runtime manifest rebuilt with ${runtime.enabledCount ?? 0} enabled mod(s).`
+      });
+    }
+  } catch (error) {
+    failed.push({
+      step: 'runtime',
+      error: error.message || String(error)
+    });
+  }
+
+  try {
+    if (typeof qRunQuartzPrelaunchSafetyCheck === 'function') {
+      after = qRunQuartzPrelaunchSafetyCheck({ syncRuntime: true });
+    }
+  } catch (error) {
+    failed.push({
+      step: 'after-check',
+      error: error.message || String(error)
+    });
+  }
+
+  const afterOk = after ? !!after.ok : failed.length === 0;
+
+  return {
+    ok: failed.length === 0 && afterOk,
+    repairedCount: repaired.length,
+    skippedCount: skipped.length,
+    failedCount: failed.length,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    backup,
+    before,
+    after,
+    runtime,
+    repaired,
+    skipped,
+    failed,
+    notes
+  };
+}
+
+try {
+  ipcMain.removeHandler('fix-quartz-setup');
+} catch (_) {}
+
+ipcMain.handle('fix-quartz-setup', async (_event, options = {}) => {
+  return qRunQuartzFixMySetup(options);
+});
+// ===== Quartz Fix My Setup END =====
+
+
 // ===== Quartz Backup / Restore START =====
 // Local setup backups for installed packages, enabled/disabled states, profiles/loadouts,
 // and runtime files. Restore is intentionally non-destructive: it does not delete unrelated current mods.
