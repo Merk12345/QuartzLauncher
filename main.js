@@ -5407,6 +5407,358 @@ try {
   ipcMain.removeHandler('export-installed-mod-list');
 } catch {}
 
+// ===== Quartz Backup / Restore START =====
+// Creates a local folder backup of installed Quartz packages, enabled/disabled states,
+// profiles/loadouts, and runtime status files. Restore copies packages/profiles back
+// and reapplies saved enabled/disabled states without deleting unrelated current mods.
+function qBackupsRootDir() {
+  return path.join(app.getPath('desktop') || os.homedir(), 'QuartzLauncherBackups');
+}
+
+function qBackupTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function qEnsureBackupsRootDir() {
+  const dir = qBackupsRootDir();
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function qBackupReadJson(filePath, fallback = null) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function qBackupCopyFileIfExists(src, dest) {
+  if (!src || !fs.existsSync(src)) return false;
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(src, dest);
+  return true;
+}
+
+function qBackupCopyDirJsonFiles(srcDir, destDir) {
+  let count = 0;
+  if (!srcDir || !fs.existsSync(srcDir)) return count;
+
+  fs.mkdirSync(destDir, { recursive: true });
+
+  for (const name of fs.readdirSync(srcDir)) {
+    if (!name.toLowerCase().endsWith('.json')) continue;
+
+    const src = path.join(srcDir, name);
+    const stat = fs.statSync(src);
+    if (!stat.isFile()) continue;
+
+    fs.copyFileSync(src, path.join(destDir, name));
+    count += 1;
+  }
+
+  return count;
+}
+
+function qCreateQuartzBackup() {
+  if (typeof qEnsureNativeFolders === 'function') qEnsureNativeFolders();
+  if (typeof qEnsureEnableFolders === 'function') qEnsureEnableFolders();
+  if (typeof qEnsureProfilesDir === 'function') qEnsureProfilesDir();
+  if (typeof qEnsureRuntimeFolders === 'function') qEnsureRuntimeFolders();
+
+  const root = qEnsureBackupsRootDir();
+  const backupName = `QuartzBackup-${qBackupTimestamp()}`;
+  const backupDir = path.join(root, backupName);
+
+  const packagesDir = path.join(backupDir, 'packages');
+  const profilesDir = path.join(backupDir, 'profiles');
+  const runtimeDir = path.join(backupDir, 'runtime');
+
+  fs.mkdirSync(packagesDir, { recursive: true });
+  fs.mkdirSync(profilesDir, { recursive: true });
+  fs.mkdirSync(runtimeDir, { recursive: true });
+
+  const installed = typeof qProfileSnapshotInstalledMods === 'function'
+    ? qProfileSnapshotInstalledMods()
+    : [];
+
+  const enabledModIds = installed.filter(mod => mod.enabled).map(mod => mod.id).filter(Boolean);
+  const disabledModIds = installed.filter(mod => !mod.enabled).map(mod => mod.id).filter(Boolean);
+
+  const copiedPackages = [];
+  const missingPackages = [];
+
+  for (const mod of installed) {
+    const id = String(mod.id || '').trim();
+    if (!id) continue;
+
+    try {
+      const src = qLibraryPackagePath(id);
+      if (src && fs.existsSync(src)) {
+        const dest = path.join(packagesDir, path.basename(src));
+        fs.copyFileSync(src, dest);
+        copiedPackages.push({ id, file: path.basename(dest) });
+      } else {
+        missingPackages.push(id);
+      }
+    } catch (error) {
+      missingPackages.push(`${id}: ${error.message || error}`);
+    }
+  }
+
+  let copiedProfiles = 0;
+  try {
+    copiedProfiles = qBackupCopyDirJsonFiles(qProfilesDir(), profilesDir);
+  } catch (_) {}
+
+  const runtimeFiles = [];
+  for (const filePath of [QUARTZ_RUNTIME_MANIFEST, QUARTZ_RUNTIME_STATUS]) {
+    try {
+      if (filePath && fs.existsSync(filePath)) {
+        const dest = path.join(runtimeDir, path.basename(filePath));
+        fs.copyFileSync(filePath, dest);
+        runtimeFiles.push(path.basename(filePath));
+      }
+    } catch (_) {}
+  }
+
+  const profiles = typeof qListQuartzProfiles === 'function'
+    ? (qListQuartzProfiles().profiles || [])
+    : [];
+
+  const manifest = {
+    format: 'quartz.launcher.backup.v1',
+    createdAt: new Date().toISOString(),
+    backupName,
+    quartzDataDir: qNativeDataDir(),
+    installedMods: installed,
+    installedCount: installed.length,
+    enabledModIds,
+    disabledModIds,
+    enabledCount: enabledModIds.length,
+    disabledCount: disabledModIds.length,
+    packages: {
+      copiedCount: copiedPackages.length,
+      copied: copiedPackages,
+      missing: missingPackages
+    },
+    profiles: {
+      copiedCount: copiedProfiles,
+      items: profiles
+    },
+    runtime: {
+      copiedFiles: runtimeFiles
+    },
+    restoreNotes: [
+      'Restore copies packages and profiles back into Quartz Launcher data.',
+      'Restore reapplies enabled/disabled states for backed-up mods.',
+      'Restore does not delete unrelated current mods.'
+    ]
+  };
+
+  const manifestPath = path.join(backupDir, 'backup.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+  return {
+    ok: true,
+    backupDir,
+    manifestPath,
+    backupName,
+    installedCount: installed.length,
+    enabledCount: enabledModIds.length,
+    disabledCount: disabledModIds.length,
+    copiedPackages: copiedPackages.length,
+    missingPackages,
+    copiedProfiles,
+    runtimeFiles
+  };
+}
+
+async function qPickQuartzBackupFolder() {
+  const options = {
+    title: 'Choose a Quartz Launcher backup folder',
+    defaultPath: qEnsureBackupsRootDir(),
+    properties: ['openDirectory']
+  };
+
+  const focused = BrowserWindow.getFocusedWindow?.();
+  const result = focused
+    ? await dialog.showOpenDialog(focused, options)
+    : await dialog.showOpenDialog(options);
+
+  if (result.canceled || !result.filePaths || !result.filePaths[0]) {
+    return null;
+  }
+
+  return result.filePaths[0];
+}
+
+function qRestoreQuartzBackupFromDir(backupDir) {
+  if (!backupDir || !fs.existsSync(backupDir)) {
+    return {
+      ok: false,
+      error: 'Backup folder not found.'
+    };
+  }
+
+  const manifestPath = path.join(backupDir, 'backup.json');
+  const manifest = qBackupReadJson(manifestPath);
+
+  if (!manifest || manifest.format !== 'quartz.launcher.backup.v1') {
+    return {
+      ok: false,
+      error: 'This folder does not look like a Quartz Launcher backup.'
+    };
+  }
+
+  if (typeof qEnsureNativeFolders === 'function') qEnsureNativeFolders();
+  if (typeof qEnsureEnableFolders === 'function') qEnsureEnableFolders();
+  if (typeof qEnsureProfilesDir === 'function') qEnsureProfilesDir();
+
+  const restoredPackages = [];
+  const failed = [];
+
+  try {
+    const packagesDir = path.join(backupDir, 'packages');
+    const libraryDir = path.dirname(qLibraryPackagePath('quartz-restore-probe'));
+
+    fs.mkdirSync(libraryDir, { recursive: true });
+
+    if (fs.existsSync(packagesDir)) {
+      for (const name of fs.readdirSync(packagesDir)) {
+        if (!/\.(quartz|geode|zip)$/i.test(name)) continue;
+
+        const src = path.join(packagesDir, name);
+        const stat = fs.statSync(src);
+        if (!stat.isFile()) continue;
+
+        const dest = path.join(libraryDir, name);
+        fs.copyFileSync(src, dest);
+        restoredPackages.push(name);
+      }
+    }
+  } catch (error) {
+    failed.push({
+      step: 'packages',
+      error: error.message || String(error)
+    });
+  }
+
+  let restoredProfiles = 0;
+  try {
+    restoredProfiles = qBackupCopyDirJsonFiles(path.join(backupDir, 'profiles'), qProfilesDir());
+  } catch (error) {
+    failed.push({
+      step: 'profiles',
+      error: error.message || String(error)
+    });
+  }
+
+  const installedSnapshot = Array.isArray(manifest.installedMods) ? manifest.installedMods : [];
+  const enabledIds = new Set(
+    Array.isArray(manifest.enabledModIds)
+      ? manifest.enabledModIds.map(id => String(id).trim()).filter(Boolean)
+      : installedSnapshot.filter(mod => mod.enabled).map(mod => String(mod.id || '').trim()).filter(Boolean)
+  );
+  const disabledIds = new Set(
+    Array.isArray(manifest.disabledModIds)
+      ? manifest.disabledModIds.map(id => String(id).trim()).filter(Boolean)
+      : installedSnapshot.filter(mod => !mod.enabled).map(mod => String(mod.id || '').trim()).filter(Boolean)
+  );
+
+  let enabledCount = 0;
+  let disabledCount = 0;
+
+  for (const id of enabledIds) {
+    try {
+      qEnableQuartzMod(id);
+      enabledCount += 1;
+    } catch (error) {
+      failed.push({
+        step: 'enable',
+        id,
+        error: error.message || String(error)
+      });
+    }
+  }
+
+  for (const id of disabledIds) {
+    try {
+      qDisableQuartzMod(id);
+      disabledCount += 1;
+    } catch (error) {
+      failed.push({
+        step: 'disable',
+        id,
+        error: error.message || String(error)
+      });
+    }
+  }
+
+  let runtime = null;
+  try {
+    if (typeof qBuildRuntimeManifest === 'function') {
+      runtime = qBuildRuntimeManifest();
+    }
+  } catch (error) {
+    failed.push({
+      step: 'runtime',
+      error: error.message || String(error)
+    });
+  }
+
+  return {
+    ok: failed.length === 0,
+    backupDir,
+    manifest,
+    restoredPackages: restoredPackages.length,
+    restoredPackageFiles: restoredPackages,
+    restoredProfiles,
+    enabledCount,
+    disabledCount,
+    failed,
+    runtime
+  };
+}
+
+for (const channel of [
+  'create-quartz-backup',
+  'restore-quartz-backup',
+  'open-quartz-backups-folder'
+]) {
+  try {
+    ipcMain.removeHandler(channel);
+  } catch (_) {}
+}
+
+ipcMain.handle('create-quartz-backup', async () => {
+  return qCreateQuartzBackup();
+});
+
+ipcMain.handle('restore-quartz-backup', async () => {
+  const backupDir = await qPickQuartzBackupFolder();
+  if (!backupDir) {
+    return {
+      ok: false,
+      canceled: true,
+      error: 'Restore canceled.'
+    };
+  }
+
+  return qRestoreQuartzBackupFromDir(backupDir);
+});
+
+ipcMain.handle('open-quartz-backups-folder', async () => {
+  const dir = qEnsureBackupsRootDir();
+  await shell.openPath(dir);
+  return {
+    ok: true,
+    backupsDir: dir
+  };
+});
+// ===== Quartz Backup / Restore END =====
+
+
 // ===== Quartz Profiles / Loadouts START =====
 // Stores named loadouts of enabled Quartz mods and can apply them later.
 // Profiles live in the normal QuartzLauncher data folder, not in the repo.

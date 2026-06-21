@@ -2722,8 +2722,189 @@ function installQuartzProfilesDelegatedClickHandler() {
   document.addEventListener('click', handleQuartzProfilesDelegatedClick);
 }
 
+function getQuartzBackupSettingsHost() {
+  const page = $('#settings');
+  if (!page) return null;
+
+  return (
+    page.querySelector('.settings-grid') ||
+    page.querySelector('.settings-cards') ||
+    page.querySelector('.card-grid') ||
+    page.querySelector('.page-content') ||
+    page
+  );
+}
+
+function ensureQuartzBackupCard() {
+  if ($('#quartz-backup-card')) return $('#quartz-backup-card');
+
+  const host = getQuartzBackupSettingsHost();
+  if (!host) return null;
+
+  const card = document.createElement('section');
+  card.id = 'quartz-backup-card';
+  card.className = 'settings-card quartz-card quartz-backup-card';
+  card.innerHTML = `
+    <div class="quartz-card-header">
+      <div>
+        <h3>Backup / Restore</h3>
+        <p>Back up installed packages, enabled/disabled states, profiles/loadouts, and runtime status.</p>
+      </div>
+    </div>
+
+    <div class="quartz-actions quartz-backup-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+      <button class="primary-btn small" id="quartz-create-backup-btn">Create Backup</button>
+      <button class="secondary-btn small" id="quartz-restore-backup-btn">Restore Backup</button>
+      <button class="secondary-btn small" id="quartz-open-backups-folder-btn">Open Backups Folder</button>
+    </div>
+
+    <div id="quartz-backup-status" class="status-text small muted">
+      Backups are saved to a QuartzLauncherBackups folder on your Desktop.
+    </div>
+  `;
+
+  const profilesCard = $('#quartz-profiles-card');
+  if (profilesCard && profilesCard.parentElement === host) {
+    host.insertBefore(card, profilesCard);
+  } else {
+    host.appendChild(card);
+  }
+
+  return card;
+}
+
+function setQuartzBackupStatus(text = '') {
+  const el = $('#quartz-backup-status');
+  if (el) el.textContent = text;
+}
+
+async function createQuartzBackup() {
+  ensureQuartzBackupCard();
+
+  if (!window.quartzAPI?.createQuartzBackup) {
+    alert('Create Backup is not connected. Restart Quartz Launcher and try again.');
+    setQuartzBackupStatus('Create Backup is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  try {
+    setQuartzBackupStatus('Creating backup...');
+    const result = await window.quartzAPI.createQuartzBackup();
+
+    if (!result?.ok) {
+      alert(`Could not create backup:\n${getError(result)}`);
+      setQuartzBackupStatus('Backup failed.');
+      return;
+    }
+
+    const msg = `Backup created: ${result.copiedPackages ?? 0} package(s), ${result.enabledCount ?? 0} enabled mod(s), ${result.copiedProfiles ?? 0} profile(s).`;
+    setQuartzBackupStatus(`${msg} Folder: ${result.backupDir || ''}`);
+    setStatus(msg);
+    alert(`${msg}\n\n${result.backupDir || ''}`);
+  } catch (error) {
+    alert(`Create Backup crashed:\n${error.message || error}`);
+    setQuartzBackupStatus(`Backup crashed: ${error.message || error}`);
+  }
+}
+
+async function restoreQuartzBackup() {
+  ensureQuartzBackupCard();
+
+  if (!window.quartzAPI?.restoreQuartzBackup) {
+    alert('Restore Backup is not connected. Restart Quartz Launcher and try again.');
+    setQuartzBackupStatus('Restore Backup is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  const ok = confirm(
+    'Restore a Quartz backup?\n\nThis will copy backed-up packages and profiles back into Quartz, then reapply the backed-up enabled/disabled states. It will not delete unrelated current mods.'
+  );
+  if (!ok) return;
+
+  try {
+    setQuartzBackupStatus('Choose a backup folder...');
+    const result = await window.quartzAPI.restoreQuartzBackup();
+
+    if (result?.canceled) {
+      setQuartzBackupStatus('Restore canceled.');
+      return;
+    }
+
+    if (!result?.ok) {
+      const failed = Array.isArray(result?.failed) && result.failed.length
+        ? '\n\nFailed:\n' + result.failed.map(item => `${item.step || 'step'}${item.id ? ` ${item.id}` : ''}: ${item.error}`).join('\n')
+        : '';
+      alert(`Restore finished with errors:\n${getError(result)}${failed}`);
+    }
+
+    const msg = `Restore finished: ${result?.restoredPackages ?? 0} package(s), ${result?.restoredProfiles ?? 0} profile(s), enabled ${result?.enabledCount ?? 0}, disabled ${result?.disabledCount ?? 0}.`;
+    setQuartzBackupStatus(msg);
+    setStatus(msg);
+
+    state.selectedInstalledModIds?.clear?.();
+    await refreshAll();
+    if (typeof loadQuartzProfiles === 'function') await loadQuartzProfiles(true);
+  } catch (error) {
+    alert(`Restore Backup crashed:\n${error.message || error}`);
+    setQuartzBackupStatus(`Restore crashed: ${error.message || error}`);
+  }
+}
+
+async function openQuartzBackupsFolder() {
+  ensureQuartzBackupCard();
+
+  if (!window.quartzAPI?.openQuartzBackupsFolder) {
+    alert('Open Backups Folder is not connected. Restart Quartz Launcher and try again.');
+    return;
+  }
+
+  try {
+    const result = await window.quartzAPI.openQuartzBackupsFolder();
+    if (!result?.ok) {
+      alert(`Could not open backups folder:\n${getError(result)}`);
+      return;
+    }
+    setQuartzBackupStatus(`Opened backups folder: ${result.backupsDir || ''}`);
+  } catch (error) {
+    alert(`Open Backups Folder crashed:\n${error.message || error}`);
+  }
+}
+
+function handleQuartzBackupDelegatedClick(event) {
+  const target = event.target?.closest?.(
+    '#quartz-create-backup-btn, #quartz-restore-backup-btn, #quartz-open-backups-folder-btn'
+  );
+
+  if (!target) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (target.id === 'quartz-create-backup-btn') {
+    createQuartzBackup();
+    return;
+  }
+
+  if (target.id === 'quartz-restore-backup-btn') {
+    restoreQuartzBackup();
+    return;
+  }
+
+  if (target.id === 'quartz-open-backups-folder-btn') {
+    openQuartzBackupsFolder();
+  }
+}
+
+function installQuartzBackupDelegatedClickHandler() {
+  if (window.__quartzBackupDelegatedClickInstalled) return;
+  window.__quartzBackupDelegatedClickInstalled = true;
+  document.addEventListener('click', handleQuartzBackupDelegatedClick);
+}
+
 async function updateSettings() {
   ensureRuntimeSettingsCard();
+  ensureQuartzBackupCard();
+  ensureQuartzBackupCard();
   ensureQuartzProfilesCard();
   ensureQuartzProfilesCard();
   quartzRefreshRuntimeCard();
@@ -3930,6 +4111,7 @@ function bindButtons() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  installQuartzBackupDelegatedClickHandler();
   installQuartzProfilesDelegatedClickHandler();
   addStyles();
   bindButtons();
