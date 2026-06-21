@@ -2,6 +2,7 @@
 
 const state = {
   indexMods: [],
+  allIndexMods: [],
   installedMods: [],
   installedUpdateMap: new Map(),
   installedUpdatesCheckedAt: null,
@@ -1458,6 +1459,298 @@ function clearSelectedIndexMods() {
   setStatus('Cleared selected Index mods.');
 }
 
+function quartzDependencyIsOptional(dep) {
+  if (!dep || typeof dep !== 'object') return false;
+
+  if (dep.required === false) return true;
+  if (dep.optional === true) return true;
+
+  const importance = String(dep.importance || dep.type || dep.kind || '').toLowerCase();
+  return ['optional', 'suggested', 'recommend', 'recommended'].includes(importance);
+}
+
+function quartzDependencyCleanId(value = '') {
+  const id = String(value || '').trim();
+  if (!id) return '';
+
+  return id
+    .replace(/^mod:/i, '')
+    .replace(/^geode:/i, '')
+    .replace(/^quartz:/i, '')
+    .trim();
+}
+
+function quartzDependencyIdsFromValue(value, out = []) {
+  if (!value) return out;
+
+  if (typeof value === 'string') {
+    const id = quartzDependencyCleanId(value);
+    if (id) out.push(id);
+    return out;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach(item => quartzDependencyIdsFromValue(item, out));
+    return out;
+  }
+
+  if (typeof value === 'object') {
+    if (quartzDependencyIsOptional(value)) return out;
+
+    const directId = quartzDependencyCleanId(
+      value.id ||
+      value.modId ||
+      value.packageId ||
+      value.slug ||
+      value.name ||
+      value.dependency ||
+      ''
+    );
+
+    if (directId) {
+      out.push(directId);
+      return out;
+    }
+
+    // Support map-shaped dependencies: { "some.mod.id": ">=1.0.0" }
+    Object.entries(value).forEach(([key, val]) => {
+      const k = quartzDependencyCleanId(key);
+      if (!k) return;
+
+      const lower = k.toLowerCase();
+      if (['version', 'importance', 'type', 'kind', 'required', 'optional'].includes(lower)) return;
+
+      if (val && typeof val === 'object' && quartzDependencyIsOptional(val)) return;
+      out.push(k);
+    });
+  }
+
+  return out;
+}
+
+function getQuartzModDependencyIds(mod = {}) {
+  const raw = [];
+
+  quartzDependencyIdsFromValue(mod.dependencies, raw);
+  quartzDependencyIdsFromValue(mod.depends, raw);
+  quartzDependencyIdsFromValue(mod.requires, raw);
+  quartzDependencyIdsFromValue(mod.requiredMods, raw);
+  quartzDependencyIdsFromValue(mod.dependencyIds, raw);
+  quartzDependencyIdsFromValue(mod.geodeDependencies, raw);
+  quartzDependencyIdsFromValue(mod.geode?.dependencies, raw);
+  quartzDependencyIdsFromValue(mod.manifest?.dependencies, raw);
+  quartzDependencyIdsFromValue(mod.raw?.dependencies, raw);
+
+  const selfId = getModId(mod);
+  const seen = new Set();
+
+  return raw
+    .map(quartzDependencyCleanId)
+    .filter(Boolean)
+    .filter(id => id !== selfId)
+    .filter(id => {
+      const key = id.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function getQuartzKnownIndexModsForDependencies() {
+  const mods = [];
+
+  if (Array.isArray(state.allIndexMods)) mods.push(...state.allIndexMods);
+  if (Array.isArray(state.indexMods)) mods.push(...state.indexMods);
+
+  const byId = new Map();
+
+  mods.forEach(mod => {
+    const id = getModId(mod);
+    if (!id || byId.has(id)) return;
+    byId.set(id, mod);
+  });
+
+  return [...byId.values()];
+}
+
+function getQuartzIndexModById(packageId) {
+  const wanted = String(packageId || '').trim();
+  if (!wanted) return null;
+
+  return getQuartzKnownIndexModsForDependencies()
+    .find(mod => getModId(mod) === wanted) || null;
+}
+
+async function ensureQuartzIndexForDependencyHandling() {
+  if (Array.isArray(state.allIndexMods) && state.allIndexMods.length) return state.allIndexMods;
+
+  let result = null;
+
+  if (window.quartzAPI?.getPublicIndexLocal) {
+    result = await Promise.race([
+      window.quartzAPI.getPublicIndexLocal(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Local index timed out')), 10000))
+    ]);
+  } else if (window.quartzAPI?.getQuartzIndex) {
+    result = await window.quartzAPI.getQuartzIndex({ page: 1, pageSize: 5000, category: 'All' });
+  } else {
+    return [];
+  }
+
+  state.allIndexMods = normalizeIndexMods(result);
+  return state.allIndexMods;
+}
+
+async function getQuartzInstalledIdSetForDependencies() {
+  try {
+    const result = await window.quartzAPI.getInstalledMods();
+    state.installedMods = normalizeInstalledMods(result);
+  } catch (_) {}
+
+  return new Set(
+    (state.installedMods || [])
+      .map(getModId)
+      .filter(Boolean)
+  );
+}
+
+async function installQuartzPackageWithDependencies(packageId, options = {}) {
+  const targetId = String(packageId || '').trim();
+
+  if (!targetId) {
+    return {
+      ok: false,
+      error: 'Missing package id.'
+    };
+  }
+
+  if (!window.quartzAPI?.installQuartzPackage) {
+    return {
+      ok: false,
+      error: 'Install API is not connected. Restart Quartz Launcher and try again.'
+    };
+  }
+
+  await ensureQuartzIndexForDependencyHandling();
+
+  const installedIds = await getQuartzInstalledIdSetForDependencies();
+  const visited = new Set();
+  const visiting = new Set();
+  const dependenciesInstalled = [];
+  const dependenciesAlreadyInstalled = [];
+  const missingDependencies = [];
+  const failedDependencies = [];
+
+  const installOne = async (id, isTarget = false) => {
+    id = String(id || '').trim();
+
+    if (!id) return { ok: true, skipped: true };
+    if (visited.has(id)) return { ok: true, skipped: true };
+
+    if (visiting.has(id)) {
+      return {
+        ok: false,
+        error: `Dependency loop detected at ${id}`
+      };
+    }
+
+    visiting.add(id);
+
+    const alreadyInstalled = installedIds.has(id);
+
+    if (alreadyInstalled && !(isTarget && options.forceTarget)) {
+      if (!isTarget) {
+        dependenciesAlreadyInstalled.push(id);
+
+        try {
+          if (window.quartzAPI?.enableQuartzMod) {
+            await window.quartzAPI.enableQuartzMod(id);
+          }
+        } catch (_) {}
+      }
+
+      visiting.delete(id);
+      visited.add(id);
+      return { ok: true, skipped: true, alreadyInstalled: true };
+    }
+
+    const indexMod = getQuartzIndexModById(id);
+    const deps = getQuartzModDependencyIds(indexMod || { id });
+
+    for (const depId of deps) {
+      if (depId === id) continue;
+
+      if (!getQuartzIndexModById(depId) && !installedIds.has(depId)) {
+        missingDependencies.push({
+          for: id,
+          dependency: depId
+        });
+        continue;
+      }
+
+      const depResult = await installOne(depId, false);
+
+      if (!depResult?.ok) {
+        failedDependencies.push({
+          for: id,
+          dependency: depId,
+          error: getError(depResult)
+        });
+      }
+    }
+
+    const label = indexMod?.name || id;
+    if (!options.quietDependencies) {
+      setStatus(isTarget ? `Installing ${label}...` : `Installing dependency ${label}...`);
+    }
+
+    const result = await window.quartzAPI['installQuartzPackage'](id);
+
+    if (result?.ok) {
+      installedIds.add(id);
+
+      if (!isTarget) {
+        dependenciesInstalled.push(id);
+
+        try {
+          if (window.quartzAPI?.enableQuartzMod) {
+            await window.quartzAPI.enableQuartzMod(id);
+          }
+        } catch (_) {}
+      }
+    }
+
+    visiting.delete(id);
+    visited.add(id);
+    return result;
+  };
+
+  const result = await installOne(targetId, true);
+
+  return {
+    ...(result || {}),
+    ok: !!result?.ok,
+    dependencyHandling: true,
+    dependenciesInstalled,
+    dependenciesAlreadyInstalled,
+    missingDependencies,
+    failedDependencies
+  };
+}
+
+function quartzDependencySummaryFromResult(result = {}) {
+  const installed = Array.isArray(result.dependenciesInstalled) ? result.dependenciesInstalled.length : 0;
+  const missing = Array.isArray(result.missingDependencies) ? result.missingDependencies.length : 0;
+  const failed = Array.isArray(result.failedDependencies) ? result.failedDependencies.length : 0;
+
+  const parts = [];
+  if (installed) parts.push(`${installed} dependenc${installed === 1 ? 'y' : 'ies'} installed`);
+  if (missing) parts.push(`${missing} missing dependenc${missing === 1 ? 'y' : 'ies'}`);
+  if (failed) parts.push(`${failed} dependency error${failed === 1 ? '' : 's'}`);
+
+  return parts.join(', ');
+}
+
 async function installSelectedIndexMods(event) {
   const ids = getSelectedIndexModIds();
 
@@ -1491,7 +1784,7 @@ async function installSelectedIndexMods(event) {
       setStatus(`Installing ${installed + 1}/${ids.length}: ${name}`);
 
       try {
-        const result = await window.quartzAPI.installQuartzPackage(id);
+        const result = await installQuartzPackageWithDependencies(id);
 
         if (!isOk(result)) {
           failures.push(`${name}: ${getError(result)}`);
@@ -1611,7 +1904,7 @@ function createModCard(mod, mode) {
     btn.textContent = 'Installing...';
 
     try {
-      const result = await window.quartzAPI.installQuartzPackage(id);
+      const result = await installQuartzPackageWithDependencies(id);
 
       if (!isOk(result)) {
         btn.disabled = false;
@@ -2473,7 +2766,7 @@ async function updateInstalledModsByIds(ids = []) {
     try {
       setStatus(`Updating ${candidate.installed?.name || candidate.latest?.name || id}...`);
 
-      const result = await window.quartzAPI.installQuartzPackage(id);
+      const result = await installQuartzPackageWithDependencies(id, { forceTarget: true, quietDependencies: true });
 
       if (!result?.ok) {
         failed.push(`${id}: ${getError(result)}`);
