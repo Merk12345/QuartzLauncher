@@ -1,6 +1,6 @@
 {
   "name": "quartz-launcher",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Quartz Launcher for Geometry Dash",
   "main": "main.js",
   "scripts": {
@@ -18,7 +18,11 @@
     "site:preview": "python3 -m http.server 5173 --directory site",
     "site:deploy": "wrangler pages deploy site --project-name=quartz-launcher --branch=main --commit-dirty=true",
     "build:prerelease": "node tools/build-prerelease.js",
-    "sync:geode-index": "node tools/sync-geode-index-to-quartz.js"
+    "sync:geode-index": "node tools/sync-geode-index-to-quartz.js",
+    "dist:linux": "electron-builder --linux AppImage --x64",
+    "dist:windows": "electron-builder --win portable --x64",
+    "dist:mac": "electron-builder --mac dmg --x64 --arm64",
+    "dist:all-local": "electron-builder --linux AppImage --win portable --x64"
   },
   "devDependencies": {
     "@electron/packager": "^20.0.1",
@@ -54,6 +58,15 @@
         }
       ],
       "artifactName": "QuartzLauncher-Windows-${version}-${arch}.${ext}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   }
 }

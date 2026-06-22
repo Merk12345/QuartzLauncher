@@ -405,7 +405,7 @@ async function getPagedGeodeMods({ page, pageSize, search, category, seenIds }) 
       seenIds.add(mod.id);
     }
   } catch (onlineError) {
-    errors.push({ file: 'Geode Online Index', error: onlineError.message });
+    errors.push({ file: 'Compatibility Index', error: onlineError.message });
   }
 
   return { mods, errors, total };
@@ -471,7 +471,7 @@ async function installOnlineGeodePackage(packageId) {
   const downloadLink = latest?.download_link;
 
   if (!downloadLink) {
-    throw new Error('Geode mod is missing download link.');
+    throw new Error('Compatibility package is missing download link.');
   }
 
   const data = await quartzFetchBuffer(downloadLink);
@@ -587,7 +587,7 @@ function getInstalledGeodeMods() {
       name: id,
       developer: 'Unknown',
       version: 'Installed',
-      description: 'Installed Geode mod.',
+      description: 'Installed compatibility package.',
       type: 'geode-installed',
       tags: ['Installed'],
       category: 'Utility',
@@ -597,7 +597,7 @@ function getInstalledGeodeMods() {
       installed: true,
       iconDataUrl: '',
       iconUrl: `https://api.geode-sdk.org/v1/mods/${encodeURIComponent(id)}/logo`,
-      detailsText: 'Installed Geode mod.',
+      detailsText: 'Installed compatibility package.',
       changelogText: '',
       source: 'installed-folder'
     };
@@ -618,7 +618,371 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// ===== Quartz v0.4.0 Managed Compatibility Runtime START =====
+// Quartz-native packages are the primary package format.
+// Geode-compatible packages are handled as compatibility packages through a Quartz-managed runtime.
+// The user should not need to manually install a separate loader for Quartz to manage supported packages.
+
+const Q_MANAGED_COMPAT_RUNTIME_VERSION = '0.4.0';
+const Q_COMPAT_RUNTIME_FILE_NAMES = [
+  'Geode.dll',
+  'Geode.lib',
+  'Geode.pdb',
+  'GeodeUpdater.exe'
+];
+
+function qManagedRuntimeRootDir() {
+  try {
+    return path.join(app.getPath('userData'), 'runtime');
+  } catch (_error) {
+    return path.join(__dirname, 'runtime');
+  }
+}
+
+function qManagedCompatRuntimeDir() {
+  return path.join(qManagedRuntimeRootDir(), 'geode-compat');
+}
+
+function qManagedCompatStatePath() {
+  return path.join(qManagedCompatRuntimeDir(), 'quartz-managed-runtime.json');
+}
+
+function qManagedCompatBundledRuntimeDirs() {
+  const dirs = [];
+
+  try {
+    if (process.resourcesPath) {
+      dirs.push(path.join(process.resourcesPath, 'runtime', 'geode-compat'));
+      dirs.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'runtime', 'geode-compat'));
+    }
+  } catch (_error) {}
+
+  dirs.push(path.join(__dirname, 'runtime', 'geode-compat'));
+  dirs.push(qManagedCompatRuntimeDir());
+
+  return [...new Set(dirs)];
+}
+
+function qManagedRuntimeEnsureDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function qManagedRuntimeSafeCopyFile(src, dest) {
+  qManagedRuntimeEnsureDir(path.dirname(dest));
+  fs.copyFileSync(src, dest);
+}
+
+function qManagedRuntimeGeometryDashDir() {
+  try {
+    if (typeof MODS_DIR === 'string' && MODS_DIR) {
+      const maybe = path.resolve(MODS_DIR, '..', '..');
+      if (fs.existsSync(maybe)) return maybe;
+    }
+  } catch (_error) {}
+
+  try {
+    if (typeof GD_DIR === 'string' && GD_DIR && fs.existsSync(GD_DIR)) return GD_DIR;
+  } catch (_error) {}
+
+  try {
+    if (typeof GEOMETRY_DASH_DIR === 'string' && GEOMETRY_DASH_DIR && fs.existsSync(GEOMETRY_DASH_DIR)) return GEOMETRY_DASH_DIR;
+  } catch (_error) {}
+
+  return '';
+}
+
+function qManagedRuntimeTextFields(mod = {}) {
+  const fields = [
+    mod.id,
+    mod.packageId,
+    mod.name,
+    mod.engine,
+    mod.type,
+    mod.source,
+    mod.installAs,
+    mod.payload,
+    mod.packageFile,
+    mod.category
+  ];
+
+  if (Array.isArray(mod.tags)) fields.push(...mod.tags);
+  if (Array.isArray(mod.engines)) fields.push(...mod.engines);
+
+  return fields
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+function qManagedRuntimeIsQuartzNativePackage(mod = {}) {
+  const text = qManagedRuntimeTextFields(mod);
+  return text.includes('quartz-native') || text.includes('quartz native');
+}
+
+function qManagedRuntimeIsGeodeCompatiblePackage(mod = {}) {
+  const text = qManagedRuntimeTextFields(mod);
+
+  if (qManagedRuntimeIsQuartzNativePackage(mod)) return false;
+
+  return (
+    text.includes('geode-compatible') ||
+    text.includes('geode compatibility') ||
+    text.includes('geode-compat') ||
+    text.includes('geode compat') ||
+    text.includes('geode-online') ||
+    text.includes('.geode') ||
+    text.includes(' geode ')
+  );
+}
+
+function qManagedRuntimePackageId(mod = {}) {
+  return String(mod.id || mod.packageId || mod.modId || mod.slug || mod.installAs || '').trim();
+}
+
+function qManagedRuntimePackageEnabled(mod = {}) {
+  if (typeof mod.enabled === 'boolean') return mod.enabled;
+  if (typeof mod.isEnabled === 'boolean') return mod.isEnabled;
+  if (typeof mod.disabled === 'boolean') return !mod.disabled;
+  const status = String(mod.status || '').toLowerCase();
+  if (status === 'disabled') return false;
+  return true;
+}
+
+function qManagedRuntimeEnabledPackages() {
+  try {
+    if (typeof qInstalledModsWithEnabledState === 'function') {
+      return qInstalledModsWithEnabledState().filter(qManagedRuntimePackageEnabled);
+    }
+  } catch (error) {
+    console.warn('[Quartz] Could not read installed package enabled state:', error?.message || error);
+  }
+
+  try {
+    if (typeof qListInstalledQuartzPackages === 'function') {
+      return qListInstalledQuartzPackages().filter(qManagedRuntimePackageEnabled);
+    }
+  } catch (error) {
+    console.warn('[Quartz] Could not read installed package list:', error?.message || error);
+  }
+
+  return [];
+}
+
+function qManagedRuntimeFindRuntimeSourceFile(fileName) {
+  for (const dir of qManagedCompatBundledRuntimeDirs()) {
+    const candidate = path.join(dir, fileName);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return '';
+}
+
+function qManagedRuntimeCaptureExistingRuntimeFromGame(gdDir) {
+  const compatDir = qManagedRuntimeEnsureDir(qManagedCompatRuntimeDir());
+  const captured = [];
+
+  if (!gdDir || !fs.existsSync(gdDir)) {
+    return captured;
+  }
+
+  for (const fileName of Q_COMPAT_RUNTIME_FILE_NAMES) {
+    const src = path.join(gdDir, fileName);
+    const dest = path.join(compatDir, fileName);
+
+    try {
+      if (fs.existsSync(src) && !fs.existsSync(dest)) {
+        qManagedRuntimeSafeCopyFile(src, dest);
+        captured.push(fileName);
+      }
+    } catch (error) {
+      console.warn(`[Quartz] Could not capture compatibility runtime file ${fileName}:`, error?.message || error);
+    }
+  }
+
+  return captured;
+}
+
+function qManagedRuntimeInstallRuntimeIntoGame(gdDir) {
+  const installed = [];
+  const missing = [];
+
+  if (!gdDir || !fs.existsSync(gdDir)) {
+    return {
+      ok: false,
+      installed,
+      missing: Q_COMPAT_RUNTIME_FILE_NAMES.slice(),
+      error: 'Geometry Dash folder could not be found.'
+    };
+  }
+
+  qManagedRuntimeEnsureDir(path.join(gdDir, 'geode', 'mods'));
+
+  for (const fileName of Q_COMPAT_RUNTIME_FILE_NAMES) {
+    const dest = path.join(gdDir, fileName);
+
+    if (fs.existsSync(dest)) {
+      installed.push(fileName);
+      continue;
+    }
+
+    const src = qManagedRuntimeFindRuntimeSourceFile(fileName);
+
+    if (!src) {
+      missing.push(fileName);
+      continue;
+    }
+
+    try {
+      qManagedRuntimeSafeCopyFile(src, dest);
+      installed.push(fileName);
+    } catch (error) {
+      console.warn(`[Quartz] Could not install compatibility runtime file ${fileName}:`, error?.message || error);
+      missing.push(fileName);
+    }
+  }
+
+  return {
+    ok: missing.length === 0,
+    installed,
+    missing,
+    error: missing.length ? `Missing compatibility runtime file(s): ${missing.join(', ')}` : ''
+  };
+}
+
+function qManagedRuntimeCopyDirRecursive(srcDir, destDir) {
+  const copied = [];
+
+  if (!srcDir || !destDir || !fs.existsSync(srcDir)) {
+    return copied;
+  }
+
+  qManagedRuntimeEnsureDir(destDir);
+
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    const src = path.join(srcDir, entry.name);
+    const dest = path.join(destDir, entry.name);
+
+    if (entry.isDirectory()) {
+      copied.push(...qManagedRuntimeCopyDirRecursive(src, dest));
+    } else if (entry.isFile()) {
+      qManagedRuntimeSafeCopyFile(src, dest);
+      copied.push(dest);
+    }
+  }
+
+  return copied;
+}
+
+function qManagedRuntimeInstallRuntimeResourcesIntoGame(gdDir) {
+  const installed = [];
+
+  if (!gdDir || !fs.existsSync(gdDir)) {
+    return installed;
+  }
+
+  const sourceDirs = [
+    path.join(qManagedCompatRuntimeDir(), 'resources'),
+    path.join(__dirname, 'runtime', 'geode-compat', 'resources')
+  ];
+
+  try {
+    if (process.resourcesPath) {
+      sourceDirs.unshift(path.join(process.resourcesPath, 'runtime', 'geode-compat', 'resources'));
+      sourceDirs.unshift(path.join(process.resourcesPath, 'app.asar.unpacked', 'runtime', 'geode-compat', 'resources'));
+    }
+  } catch (_error) {}
+
+  const gameResourcesRoot = path.join(gdDir, 'geode', 'resources');
+  qManagedRuntimeEnsureDir(gameResourcesRoot);
+
+  for (const sourceDir of [...new Set(sourceDirs)]) {
+    try {
+      if (!fs.existsSync(sourceDir)) continue;
+
+      for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+
+        const src = path.join(sourceDir, entry.name);
+        const dest = path.join(gameResourcesRoot, entry.name);
+        installed.push(...qManagedRuntimeCopyDirRecursive(src, dest));
+      }
+    } catch (error) {
+      console.warn('[Quartz] Could not install compatibility runtime resources from', sourceDir, error?.message || error);
+    }
+  }
+
+  return installed;
+}
+
+function qWriteManagedCompatibilityRuntimeState(state = {}) {
+  const compatDir = qManagedRuntimeEnsureDir(qManagedCompatRuntimeDir());
+  const payload = {
+    version: Q_MANAGED_COMPAT_RUNTIME_VERSION,
+    updatedAt: new Date().toISOString(),
+    ...state
+  };
+
+  fs.writeFileSync(qManagedCompatStatePath(), JSON.stringify(payload, null, 2), 'utf8');
+  return payload;
+}
+
+function qPrepareManagedRuntimeForLaunch(options = {}) {
+  const enabled = qManagedRuntimeEnabledPackages();
+  const nativePackages = enabled.filter(qManagedRuntimeIsQuartzNativePackage);
+  const compatPackages = enabled.filter(qManagedRuntimeIsGeodeCompatiblePackage);
+  const gdDir = qManagedRuntimeGeometryDashDir();
+
+  qManagedRuntimeEnsureDir(qManagedRuntimeRootDir());
+  qManagedRuntimeEnsureDir(qManagedCompatRuntimeDir());
+
+  const captured = qManagedRuntimeCaptureExistingRuntimeFromGame(gdDir);
+
+  let runtimeResult = {
+    ok: true,
+    installed: [],
+    missing: [],
+    error: ''
+  };
+
+  if (compatPackages.length > 0) {
+    runtimeResult = qManagedRuntimeInstallRuntimeIntoGame(gdDir);
+    resourceResult = qManagedRuntimeInstallRuntimeResourcesIntoGame(gdDir);
+  }
+
+  const state = qWriteManagedCompatibilityRuntimeState({
+    mode: compatPackages.length > 0 ? 'compatibility-required' : 'native-only-or-no-enabled-packages',
+    geometryDashDir: gdDir,
+    nativePackageCount: nativePackages.length,
+    compatibilityPackageCount: compatPackages.length,
+    nativePackages: nativePackages.map(qManagedRuntimePackageId).filter(Boolean),
+    compatibilityPackages: compatPackages.map(qManagedRuntimePackageId).filter(Boolean),
+    capturedRuntimeFiles: captured,
+    installedRuntimeFiles: runtimeResult.installed || [],
+    installedRuntimeResources: resourceResult || [],
+    missingRuntimeFiles: runtimeResult.missing || [],
+    ok: runtimeResult.ok,
+    error: runtimeResult.error || ''
+  });
+
+  if (!runtimeResult.ok && compatPackages.length > 0) {
+    console.warn('[Quartz] Compatibility runtime is not fully ready:', runtimeResult.error);
+  } else if (compatPackages.length > 0) {
+    console.log(`[Quartz] Compatibility runtime ready for ${compatPackages.length} package(s).`);
+  } else {
+    console.log(`[Quartz] Native package launch path ready. Native packages: ${nativePackages.length}.`);
+  }
+
+  return state;
+}
+// ===== Quartz v0.4.0 Managed Compatibility Runtime END =====
+
 ipcMain.handle('launch-gd', async () => {
+  try {
+    qPrepareManagedRuntimeForLaunch({ reason: 'launch' });
+  } catch (error) {
+    console.error('[Quartz] Managed runtime prep failed:', error?.message || error);
+  }
   try {
     await shell.openExternal(`steam://run/${STEAM_APP_ID}`);
     return { ok: true };
@@ -3176,7 +3540,7 @@ function qAutoNormalizeGeodeManifest(raw, geodeFile) {
     raw?.description ||
     raw?.about ||
     raw?.mod?.description ||
-    `Converted Geode compatibility package for ${name}.`;
+    `Converted compatibility package for ${name}.`;
 
   return {
     id,
@@ -3353,9 +3717,9 @@ ipcMain.handle('import-local-mod-file', async (event) => {
       title: 'Import Quartz Mod',
       properties: ['openFile'],
       filters: [
-        { name: 'Quartz or Geode Mods', extensions: ['quartz', 'geode'] },
+        { name: 'Quartz or Compatibility Packages', extensions: ['quartz', 'geode'] },
         { name: 'Quartz Mods', extensions: ['quartz'] },
-        { name: 'Geode Mods', extensions: ['geode'] }
+        { name: 'Compatibility Packages', extensions: ['geode'] }
       ]
     });
 
@@ -3563,11 +3927,11 @@ Quartz moves processed files there so they do not get imported over and over aga
 
 Correct:
 mods/MyMod.quartz
-mods/MyOldGeodeMod.geode
+mods/MyOldCompatibilityPackage.geode
 
 Wrong:
 mods/.imported/MyMod.quartz
-mods/.imported/MyOldGeodeMod.geode
+mods/.imported/MyOldCompatibilityPackage.geode
 `;
 
     fs.writeFileSync(readmePath, text, 'utf8');
@@ -3709,7 +4073,7 @@ async function qWrapRemoteGeodeAsQuartz(mod) {
   }
 
   if (!downloadUrl) {
-    throw new Error(`Remote Geode package is missing download URL: ${packageId}`);
+    throw new Error(`Remote compatibility package is missing download URL: ${packageId}`);
   }
 
   const cacheDir = qRemoteCacheDir();
@@ -3727,11 +4091,11 @@ async function qWrapRemoteGeodeAsQuartz(mod) {
     developer: mod.developer || mod.author || 'Unknown',
     version: String(mod.version || mod.latestVersion || '0.0.0'),
     engine: 'geode-compat',
-    category: mod.category || 'Geode Compatibility',
+    category: mod.category || 'Compatibility',
     description: mod.description || '',
     payload: 'payload/mod.geode',
     installAs: `${packageId}.geode`,
-    tags: Array.isArray(mod.tags) ? mod.tags : ['Geode Compatibility'],
+    tags: Array.isArray(mod.tags) ? mod.tags : ['Geode-compatible'],
     game: mod.game || 'geometry-dash',
     gameVersion: mod.gameVersion || '*',
     dependencies: Array.isArray(mod.dependencies) ? mod.dependencies : [],
@@ -4786,7 +5150,7 @@ function qNormalizeQuartzIndexEntryForDisplay(entry) {
     version: entry.version || entry.modVersion || 'unknown',
     description: entry.description || 'No description provided.',
     engine: entry.engine || (isRemoteGeode ? 'geode-compat' : 'quartz-resource'),
-    category: entry.category || (isRemoteGeode ? 'Geode' : 'Quartz'),
+    category: entry.category || (isRemoteGeode ? 'Compatibility' : 'Quartz'),
     tags: Array.isArray(entry.tags) ? entry.tags : [],
     source: entry.source || (isRemoteGeode ? 'geode-index' : 'local-quartz'),
     sourceType: entry.sourceType || (isRemoteGeode ? 'remote-geode' : 'local-quartz'),
@@ -6843,4 +7207,398 @@ ipcMain.handle('export-installed-mod-list', async (_event, rendererMods = []) =>
   }
 });
 // ===== Quartz Export Installed Mod List END =====
+
+// ===== Quartz Local Index API Server START =====
+const Q_LOCAL_QUARTZ_INDEX_API_PORT = 29271;
+let qLocalQuartzIndexApiServer = null;
+
+function qQuartzIndexApiJson(res, code, payload) {
+  const body = JSON.stringify(payload);
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control': 'no-store'
+  });
+  res.end(body);
+}
+
+function qQuartzIndexApiReadBody(req) {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', chunk => data += chunk);
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch {
+        resolve({});
+      }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
+function qQuartzIndexApiFindIndexFile() {
+  const fs = require('fs');
+  const path = require('path');
+
+  const candidates = [
+    path.join(__dirname, 'assets', 'index', 'quartz-index.json'),
+    path.join(process.cwd(), 'assets', 'index', 'quartz-index.json'),
+    path.join(__dirname, 'site', 'assets', 'index', 'quartz-index.json'),
+    path.join(process.cwd(), 'site', 'assets', 'index', 'quartz-index.json')
+  ];
+
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) return file;
+    } catch {}
+  }
+
+  return null;
+}
+
+function qQuartzIndexApiReadPackages() {
+  const fs = require('fs');
+  const file = qQuartzIndexApiFindIndexFile();
+
+  if (!file) return [];
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.mods)) return raw.mods;
+    if (Array.isArray(raw?.packages)) return raw.packages;
+    if (Array.isArray(raw?.data)) return raw.data;
+  } catch (error) {
+    console.error('[Quartz Local API] Failed to read index:', error);
+  }
+
+  return [];
+}
+
+function qQuartzSafeString(value, fallback = '') {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).trim();
+  return text || fallback;
+}
+
+function qQuartzSafeVersion(value, fallback = '1.0.0') {
+  const text = qQuartzSafeString(value, fallback);
+  return text;
+}
+
+function qQuartzSafeDate(value) {
+  if (!value) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+function qQuartzTags(pkg) {
+  const tags = Array.isArray(pkg.tags) ? pkg.tags.map(t => String(t).trim()).filter(Boolean) : [];
+  if (pkg.engine === 'geode-compat' && !tags.includes('compatibility-package')) {
+    tags.unshift('compatibility-package');
+  }
+  return [...new Set(tags)];
+}
+
+function qQuartzDevelopers(pkg) {
+  const name = qQuartzSafeString(pkg.developer || pkg.author || pkg.creator, 'Unknown');
+  return [{
+    username: name.toLowerCase().replace(/[^a-z0-9_.-]+/g, '-') || 'unknown',
+    display_name: name,
+    is_owner: true
+  }];
+}
+
+function qQuartzGD(pkg) {
+  const gd = pkg.gameVersion || pkg.gd || '*';
+
+  if (gd && typeof gd === 'object' && !Array.isArray(gd)) {
+    return {
+      win: qQuartzSafeString(gd.win, '*'),
+      android32: qQuartzSafeString(gd.android32, gd.win || '*'),
+      android64: qQuartzSafeString(gd.android64, gd.win || '*'),
+      mac: qQuartzSafeString(gd.mac, gd['mac-intel'] || gd.win || '*'),
+      'mac-intel': qQuartzSafeString(gd['mac-intel'], gd.mac || gd.win || '*'),
+      'mac-arm': qQuartzSafeString(gd['mac-arm'], gd.mac || gd.win || '*'),
+      ios: qQuartzSafeString(gd.ios, gd.win || '*')
+    };
+  }
+
+  const text = qQuartzSafeString(gd, '*');
+  return {
+    win: text,
+    android32: text,
+    android64: text,
+    mac: text,
+    'mac-intel': text,
+    'mac-arm': text,
+    ios: text
+  };
+}
+
+function qQuartzDownloadURL(pkg, version) {
+  const direct =
+    pkg.geodeDownloadUrl ||
+    pkg.downloadUrl ||
+    pkg.downloadURL ||
+    pkg.url ||
+    pkg.packageUrl ||
+    pkg.packageURL;
+
+  if (direct) return String(direct);
+
+  const id = encodeURIComponent(qQuartzSafeString(pkg.geodeModId || pkg.id));
+  const ver = encodeURIComponent(qQuartzSafeVersion(version));
+  return `http://127.0.0.1:${Q_LOCAL_QUARTZ_INDEX_API_PORT}/v1/mods/${id}/versions/${ver}/download`;
+}
+
+function qQuartzToServerVersion(pkg) {
+  const version = qQuartzSafeVersion(pkg.modVersion || pkg.version);
+  const id = qQuartzSafeString(pkg.geodeModId || pkg.id, 'unknown.mod');
+
+  return {
+    geode: qQuartzSafeVersion(pkg.geodeVersion, '5.7.1'),
+    gd: qQuartzGD(pkg),
+    download_link: qQuartzDownloadURL(pkg, version),
+    download_count: Number(pkg.downloadCount || pkg.download_count || 0),
+    hash: qQuartzSafeString(pkg.geodeHash || pkg.hash, ''),
+    mod_id: id,
+    name: qQuartzSafeString(pkg.name, id),
+    description: qQuartzSafeString(pkg.description, 'No description provided.'),
+    version,
+    api: Boolean(pkg.api || pkg.isAPI),
+    dependencies: Array.isArray(pkg.dependencies) ? pkg.dependencies : [],
+    incompatibilities: Array.isArray(pkg.incompatibilities) ? pkg.incompatibilities : []
+  };
+}
+
+function qQuartzToServerMod(pkg) {
+  const id = qQuartzSafeString(pkg.geodeModId || pkg.id, 'unknown.mod');
+  const created = qQuartzSafeDate(pkg.createdAt || pkg.created_at);
+  const updated = qQuartzSafeDate(pkg.updatedAt || pkg.updated_at || pkg.featuredAt);
+
+  const out = {
+    id,
+    featured: Boolean(pkg.featured),
+    download_count: Number(pkg.downloadCount || pkg.download_count || 0),
+    about: qQuartzSafeString(pkg.about || pkg.description, ''),
+    changelog: qQuartzSafeString(pkg.changelog, ''),
+    repository: qQuartzSafeString(pkg.links?.source || pkg.repository, ''),
+    developers: qQuartzDevelopers(pkg),
+    versions: [qQuartzToServerVersion(pkg)],
+    tags: qQuartzTags(pkg),
+    links: {
+      community: pkg.links?.community || undefined,
+      homepage: pkg.links?.homepage || undefined,
+      source: pkg.links?.source || undefined
+    }
+  };
+
+  if (created) out.created_at = created;
+  if (updated) out.updated_at = updated;
+
+  return out;
+}
+
+function qQuartzFilterPackages(packages, params, mode = 'all') {
+  let list = [...packages];
+
+  const query = qQuartzSafeString(params.get('query') || params.get('search') || '').toLowerCase();
+  if (query) {
+    list = list.filter(pkg => {
+      const blob = [
+        pkg.id,
+        pkg.geodeModId,
+        pkg.name,
+        pkg.developer,
+        pkg.description,
+        ...(Array.isArray(pkg.tags) ? pkg.tags : [])
+      ].join(' ').toLowerCase();
+      return blob.includes(query);
+    });
+  }
+
+  const developer = qQuartzSafeString(params.get('developer') || '').toLowerCase();
+  if (developer) {
+    list = list.filter(pkg => qQuartzSafeString(pkg.developer).toLowerCase().includes(developer));
+  }
+
+  if (mode === 'featured') {
+    list = list.filter(pkg => Boolean(pkg.featured));
+  }
+
+  if (mode === 'recent') {
+    list.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+  } else if (mode === 'download') {
+    list.sort((a, b) => Number(b.downloadCount || 0) - Number(a.downloadCount || 0));
+  } else {
+    const sort = qQuartzSafeString(params.get('sort')).toLowerCase();
+    if (sort === 'recent' || sort === 'updated' || sort === 'recently-updated') {
+      list.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+    } else if (sort === 'name') {
+      list.sort((a, b) => qQuartzSafeString(a.name || a.id).localeCompare(qQuartzSafeString(b.name || b.id)));
+    } else {
+      list.sort((a, b) => Number(b.downloadCount || 0) - Number(a.downloadCount || 0));
+    }
+  }
+
+  return list;
+}
+
+function qQuartzPaginate(list, params) {
+  const page = Math.max(1, Number(params.get('page') || 1));
+  const perPage = Math.max(1, Math.min(100, Number(params.get('per_page') || params.get('page_size') || params.get('limit') || 20)));
+  const start = (page - 1) * perPage;
+  return {
+    page,
+    per_page: perPage,
+    count: list.length,
+    data: list.slice(start, start + perPage)
+  };
+}
+
+function qQuartzStartLocalIndexApiServer() {
+  if (qLocalQuartzIndexApiServer) return;
+
+  const http = require('http');
+
+  qLocalQuartzIndexApiServer = http.createServer(async (req, res) => {
+    try {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        });
+        res.end();
+        return;
+      }
+
+      const parsed = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
+      const pathName = parsed.pathname.replace(/\/+$/, '') || '/';
+      const packages = qQuartzIndexApiReadPackages();
+
+      console.log(`[Quartz Local API] ${req.method} ${pathName}${parsed.search}`);
+
+      if (pathName === '/v1' || pathName === '/v1/') {
+        qQuartzIndexApiJson(res, 200, {
+          name: 'Quartz Local Index API',
+          count: packages.length,
+          ok: true
+        });
+        return;
+      }
+
+      if (
+        pathName === '/v1/mods' ||
+        pathName === '/v1/mods/featured' ||
+        pathName === '/v1/mods/recent' ||
+        pathName === '/v1/mods/download'
+      ) {
+        const mode =
+          pathName.endsWith('/featured') ? 'featured' :
+          pathName.endsWith('/recent') ? 'recent' :
+          pathName.endsWith('/download') ? 'download' :
+          'all';
+
+        const filtered = qQuartzFilterPackages(packages, parsed.searchParams, mode);
+        const pageData = qQuartzPaginate(filtered, parsed.searchParams);
+
+        qQuartzIndexApiJson(res, 200, {
+          data: pageData.data.map(qQuartzToServerMod),
+          count: pageData.count,
+          total: pageData.count,
+          page: pageData.page,
+          per_page: pageData.per_page
+        });
+        return;
+      }
+
+      if (
+        pathName === '/v1/mods/updates' ||
+        pathName === '/v1/mods/update' ||
+        pathName === '/v1/updates'
+      ) {
+        const body = req.method === 'POST' ? await qQuartzIndexApiReadBody(req) : {};
+        qQuartzIndexApiJson(res, 200, {
+          updates: [],
+          has_updates: false,
+          deprecations: [],
+          request: body
+        });
+        return;
+      }
+
+      let match = pathName.match(/^\/v1\/mods\/([^/]+)$/);
+      if (match) {
+        const id = decodeURIComponent(match[1]);
+        const pkg = packages.find(item => item.id === id || item.geodeModId === id);
+        if (!pkg) return qQuartzIndexApiJson(res, 404, { error: 'Not found' });
+        qQuartzIndexApiJson(res, 200, qQuartzToServerMod(pkg));
+        return;
+      }
+
+      match = pathName.match(/^\/v1\/mods\/([^/]+)\/versions\/([^/]+)$/);
+      if (match) {
+        const id = decodeURIComponent(match[1]);
+        const pkg = packages.find(item => item.id === id || item.geodeModId === id);
+        if (!pkg) return qQuartzIndexApiJson(res, 404, { error: 'Not found' });
+        qQuartzIndexApiJson(res, 200, qQuartzToServerVersion(pkg));
+        return;
+      }
+
+      match = pathName.match(/^\/v1\/mods\/([^/]+)\/versions\/([^/]+)\/download$/);
+      if (match) {
+        const id = decodeURIComponent(match[1]);
+        const pkg = packages.find(item => item.id === id || item.geodeModId === id);
+        if (!pkg) return qQuartzIndexApiJson(res, 404, { error: 'Not found' });
+
+        const url = qQuartzDownloadURL(pkg, pkg.modVersion || pkg.version);
+        if (!url || url.includes(`127.0.0.1:${Q_LOCAL_QUARTZ_INDEX_API_PORT}`)) {
+          return qQuartzIndexApiJson(res, 404, { error: 'No download URL for this Quartz package yet' });
+        }
+
+        res.writeHead(302, {
+          'Location': url,
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end();
+        return;
+      }
+
+      match = pathName.match(/^\/v1\/mods\/([^/]+)\/logo$/);
+      if (match) {
+        qQuartzIndexApiJson(res, 404, { error: 'No logo route yet' });
+        return;
+      }
+
+      qQuartzIndexApiJson(res, 404, { error: `Unknown Quartz local API route: ${pathName}` });
+    } catch (error) {
+      console.error('[Quartz Local API] Request failed:', error);
+      qQuartzIndexApiJson(res, 500, { error: String(error?.message || error) });
+    }
+  });
+
+  qLocalQuartzIndexApiServer.on('error', (error) => {
+    console.error('[Quartz Local API] Server failed:', error);
+  });
+
+  qLocalQuartzIndexApiServer.listen(Q_LOCAL_QUARTZ_INDEX_API_PORT, '127.0.0.1', () => {
+    console.log(`[Quartz Local API] running on http://127.0.0.1:${Q_LOCAL_QUARTZ_INDEX_API_PORT}/v1`);
+  });
+}
+
+if (typeof app !== 'undefined' && app?.whenReady) {
+  app.whenReady().then(() => qQuartzStartLocalIndexApiServer()).catch((error) => {
+    console.error('[Quartz Local API] Startup failed:', error);
+  });
+}
+// ===== Quartz Local Index API Server END =====
+
 

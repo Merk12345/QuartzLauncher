@@ -1000,6 +1000,81 @@ function addStyles() {
   document.head.appendChild(style);
 }
 
+// ===== Quartz v0.4.0 Display Labels START =====
+function quartzDisplayEngineLabel(mod = {}) {
+  const raw = [
+    mod.engine,
+    mod.type,
+    mod.source,
+    ...(Array.isArray(mod.tags) ? mod.tags : [])
+  ].map(value => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase();
+
+  if (raw.includes('quartz-native') || raw.includes('quartz native')) return 'Quartz-native';
+
+  if (
+    raw.includes('geode-compatible') ||
+    raw.includes('geode compatibility') ||
+    raw.includes('geode-compat') ||
+    raw.includes('geode compat') ||
+    raw.includes('geode-online') ||
+    raw.includes('geode-installed') ||
+    raw.includes('installed-folder') ||
+    raw.includes('.geode') ||
+    raw.includes(' geode ')
+  ) {
+    return 'compatibility-package';
+  }
+
+  if (mod.engine || mod.type) return String(mod.engine || mod.type);
+  return 'Quartz package';
+}
+
+function quartzDisplayTagLabel(tag = '') {
+  const raw = String(tag || '').trim();
+  const low = raw.toLowerCase();
+
+  if (!raw) return '';
+
+  if (
+    low === 'geode' ||
+    low === 'geode compatibility' ||
+    low === 'geode-compatible' ||
+    low === 'geode compat' ||
+    low === 'geode-compat' ||
+    low === 'geode-online' ||
+    low === 'geode-installed'
+  ) {
+    return 'compatibility-package';
+  }
+
+  if (low === 'quartz native' || low === 'quartz-native') return 'Quartz-native';
+
+  return raw;
+}
+
+function quartzDisplayTagsForMod(mod = {}) {
+  const tags = [];
+  const seen = new Set();
+
+  const add = value => {
+    const label = quartzDisplayTagLabel(value);
+    if (!label) return;
+    const key = label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    tags.push(label);
+  };
+
+  add(quartzDisplayEngineLabel(mod));
+
+  if (Array.isArray(mod.tags)) {
+    mod.tags.forEach(add);
+  }
+
+  return tags;
+}
+// ===== Quartz v0.4.0 Display Labels END =====
+
 function normalizeIndexMods(result) {
   if (!result) return [];
   if (Array.isArray(result)) return result;
@@ -1079,9 +1154,7 @@ function updateIndexDebug(meta = {}, allCount = 0, installedCount = 0, available
 }
 
 function getIndexModTags(mod) {
-  return Array.isArray(mod?.tags)
-    ? mod.tags.map(tag => String(tag || '').trim()).filter(Boolean)
-    : [];
+  return quartzDisplayTagsForMod(mod);
 }
 
 function indexModMatchesSearch(mod, search) {
@@ -1215,8 +1288,7 @@ function getPopularIndexTags() {
     'Cosmetic',
     'Quality of Life',
     'Quartz Native',
-    'Geode',
-    'Geode Compatibility',
+    'compatibility-package',
     'cheat',
     'offline'
   ];
@@ -1343,7 +1415,7 @@ function openQuartzModDetails(mod, mode = 'index') {
     ['Developer', mod.developer || mod.author || 'Unknown'],
     ['Version', mod.version || 'Unknown'],
     ['Category', mod.category || 'Uncategorized'],
-    ['Engine/Type', mod.engine || mod.type || 'Unknown'],
+    ['Engine/Type', quartzDisplayEngineLabel(mod)],
     ['Source', mod.source || mod.indexSource || 'Unknown'],
     ['Package', mod.packageFile || mod.packageUrl || mod.packagePath || ''],
     ['Status', mode === 'installed' || mod.installed ? 'Installed' : 'Available']
@@ -1820,13 +1892,11 @@ function createModCard(mod, mode) {
   const name = getModName(mod);
   const version = mod.version || 'unknown';
   const developer = mod.developer || mod.author || 'unknown';
-  const engine = mod.engine || mod.type || 'unknown';
+  const engine = quartzDisplayEngineLabel(mod);
   const description = mod.description || 'No description provided.';
   const enabled = modIsEnabled(mod);
   const featured = mode === 'index' && !!mod.featured;
-  const displayTags = Array.isArray(mod.tags)
-    ? mod.tags.map(tag => String(tag || '').trim()).filter(Boolean).slice(0, 8)
-    : [];
+  const displayTags = quartzDisplayTagsForMod(mod).slice(0, 8);
   const selected = mode === 'index' && state.selectedIndexModIds.has(String(id));
 
   const card = document.createElement('div');
@@ -5096,3 +5166,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setStatus('Quartz Launcher ready.');
 });
+
+// ===== Quartz Auto Launch GD Setting START =====
+const QUARTZ_AUTO_LAUNCH_GD_KEY = 'quartz.autoLaunchGD';
+let quartzAutoLaunchGDFired = false;
+
+function quartzGetAutoLaunchGDEnabled() {
+  try {
+    return localStorage.getItem(QUARTZ_AUTO_LAUNCH_GD_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function quartzSetAutoLaunchGDEnabled(enabled) {
+  try {
+    localStorage.setItem(QUARTZ_AUTO_LAUNCH_GD_KEY, enabled ? 'true' : 'false');
+  } catch {
+    // ignore localStorage failure
+  }
+}
+
+function quartzAutoLaunchStatus(message) {
+  const el = document.getElementById('quartz-auto-launch-gd-status');
+  if (el) el.textContent = message;
+  if (typeof setStatus === 'function') setStatus(message);
+}
+
+function ensureQuartzAutoLaunchGDSettingsCard() {
+  const settingsPage = document.getElementById('settings');
+  if (!settingsPage) return;
+
+  if (document.getElementById('quartz-auto-launch-gd-card')) {
+    const toggle = document.getElementById('quartz-auto-launch-gd-toggle');
+    if (toggle) toggle.checked = quartzGetAutoLaunchGDEnabled();
+    return;
+  }
+
+  const card = document.createElement('div');
+  card.id = 'quartz-auto-launch-gd-card';
+  card.className = 'settings-box quartz-card';
+  card.innerHTML = `
+    <h3>Startup</h3>
+    <p>Choose what Quartz does when the launcher opens.</p>
+
+    <label style="display:flex;gap:10px;align-items:center;margin:12px 0;">
+      <input id="quartz-auto-launch-gd-toggle" type="checkbox" />
+      <span>Auto-launch Geometry Dash when Quartz opens</span>
+    </label>
+
+    <div id="quartz-auto-launch-gd-status" class="status-text small muted">
+      Auto-launch is stored locally on this device.
+    </div>
+  `;
+
+  settingsPage.appendChild(card);
+
+  const toggle = document.getElementById('quartz-auto-launch-gd-toggle');
+  if (toggle) {
+    toggle.checked = quartzGetAutoLaunchGDEnabled();
+    toggle.addEventListener('change', () => {
+      quartzSetAutoLaunchGDEnabled(toggle.checked);
+      quartzAutoLaunchStatus(
+        toggle.checked
+          ? 'Auto-launch enabled. Quartz will launch Geometry Dash when it opens.'
+          : 'Auto-launch disabled.'
+      );
+    });
+  }
+}
+
+async function quartzMaybeAutoLaunchGDOnStartup() {
+  if (quartzAutoLaunchGDFired) return;
+  if (!quartzGetAutoLaunchGDEnabled()) return;
+
+  quartzAutoLaunchGDFired = true;
+
+  if (!window.quartzAPI?.launchGD) {
+    quartzAutoLaunchStatus('Auto-launch failed: launchGD is not connected. Restart Quartz and try again.');
+    return;
+  }
+
+  try {
+    quartzAutoLaunchStatus('Auto-launching Geometry Dash...');
+    const result = await window.quartzAPI.launchGD();
+    if (result?.ok === false) {
+      quartzAutoLaunchStatus(`Auto-launch failed: ${result.error || 'unknown error'}`);
+    } else {
+      quartzAutoLaunchStatus('Geometry Dash launched.');
+    }
+  } catch (error) {
+    quartzAutoLaunchStatus(`Auto-launch crashed: ${error.message || error}`);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  ensureQuartzAutoLaunchGDSettingsCard();
+  setTimeout(quartzMaybeAutoLaunchGDOnStartup, 1500);
+});
+// ===== Quartz Auto Launch GD Setting END =====
+
